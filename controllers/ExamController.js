@@ -1,9 +1,6 @@
 var router = (require('express')).Router();
 var websockify = require('@maximegris/node-websockify');
 
-// Additional libraries
-var moment = require('moment');
-
 // Student enters an exam
 router.post('/enter', function (request, response) {
     // Concurrently run the docker container (bare OS) AND search what applications are required
