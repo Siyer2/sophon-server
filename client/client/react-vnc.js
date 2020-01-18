@@ -115,9 +115,6 @@ class VncController extends React.Component {
 const Demo = (props) => {
   return (
     <div className='bgimg w3-display-container w3-animate-opacity w3-text-white'>
-      <div className='w3-display-topleft w3-padding-large w3-xlarge'>
-        VNC Demo (React)
-      </div>
       <VncController />
     </div>
   )

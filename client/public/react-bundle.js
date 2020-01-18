@@ -116,9 +116,6 @@ class VncController extends React.Component {
 const Demo = (props) => {
   return (
     React.createElement("div", {className: "bgimg w3-display-container w3-animate-opacity w3-text-white"}, 
-      React.createElement("div", {className: "w3-display-topleft w3-padding-large w3-xlarge"}, 
-        "VNC Demo (React)"
-      ), 
       React.createElement(VncController, null)
     )
   )
