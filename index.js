@@ -1,8 +1,33 @@
-var websockify = require('@maximegris/node-websockify');
+require('dotenv').config();
+var express = require('express');
+var app = express();
+var cors = require('cors');
 
-// Concurrently run the docker container (bare OS) AND search what applications are required
+const port = process.env.PORT ? process.env.PORT : 5902;
 
-// Add the required applications to the OS
+// Initialise the database
+app.use(express.json());
 
-// Run the proxy server
-websockify({ source: 'localhost:5901', target: 'localhost:32770' });
+// Configure CORS
+var corsOptions = {
+    origin: process.env.DEPLOYMENT === 'production' ? [process.env.PRODURL, 'http://localhost:3000'] : 'http://localhost:3000',
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+}
+app.use(cors(corsOptions));
+
+// Controllers
+var HomeController = require('./controllers/HomeController');
+var ExamController = require('./controllers/ExamController');
+
+// Routes
+app.use('/', HomeController);
+app.use('/exam', ExamController);
+
+// Start the server
+app.listen(port, function (err) {
+    if (err) {
+        throw err;
+    }
+
+    console.log(`API running on port ${port}...`);
+});
