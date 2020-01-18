@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@maximegris/node-websockify": "^1.0.7"
+    "@maximegris/node-websockify": "^1.0.7",
+    "concurrently": "^5.0.2"
   }
 }
