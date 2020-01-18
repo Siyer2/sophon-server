@@ -18,4 +18,4 @@ _setup('client/custom-vnc.js', 'bundle')
 _setup('client/react-vnc.js', 'react-bundle')
 
 app.use(express.static('public'))
-app.listen(4000, () => console.log('noVNC simple app listening on port 4000'))
+app.listen(4000, () => console.log('noVNC listening to port 4000...'))
