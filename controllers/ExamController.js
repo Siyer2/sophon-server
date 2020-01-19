@@ -23,7 +23,7 @@ router.post('/enter', async function (request, response) {
         // Concurrently run the docker container (bare OS) AND search what applications are required
         const createdContainer = await docker.container.create({ 
             Image: 'kaixhin/vnc', 
-            
+            PublishAllPorts: true
         });
         await createdContainer.start();
         const port = (await createdContainer.status);
