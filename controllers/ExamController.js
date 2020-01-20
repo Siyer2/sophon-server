@@ -5,7 +5,7 @@ const { Docker } = require('node-docker-api');
 const dummyData = {
     libreOffice: {
         commands: [
-            'apt-get install libreoffice -y'
+            'apt-get update && apt-get install libreoffice -y --fix-missing'
         ]
     }, 
     firefox: {
@@ -23,15 +23,13 @@ router.post('/enter', async function (request, response) {
         // Concurrently run the docker container (bare OS) AND search what applications are required
         const createdContainer = await docker.container.create({ 
             Image: 'kaixhin/vnc', 
-            PublishAllPorts: true, 
-            Tty: false
+            PublishAllPorts: true
         });
         await createdContainer.start();
         const port = (await createdContainer.status()).data.NetworkSettings.Ports['5901/tcp'][0].HostPort;
 
         // Add the required applications to the OS
-        await runCommand(createdContainer, ['apt-get', 'install']);
-        await runCommand(createdContainer, ['apt-get', 'install', 'libreoffice', '-y']);
+        await runCommand(createdContainer, ['sh', '-c', 'apt-get update && apt-get install libreoffice -y --fix-missing']);
 
         // Run the proxy server
         websockify({ source: `localhost:5901`, target: `localhost:${port}` });
@@ -66,15 +64,14 @@ function runCommand(container, command) {
 
     return new Promise(async (resolve, reject) => {
         try {
-
             container.exec.create({
                 AttachStdout: true,
                 AttachStderr: true,
                 Cmd: command, 
-                Tty: false
+                Tty: true
             })
             .then(exec => {
-                return exec.start({ Detach: false });
+                return exec.start({ Detach: false, Tty: true });
             })
             .then(async stream => {
                 const results = await promisifyStream(stream);
