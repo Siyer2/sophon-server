@@ -41,18 +41,6 @@ router.post('/enter', async function (request, response) {
 });
 
 //==== Docker Helper functions ====//
-// Create and run docker image
-function createAndRunContainer(docker) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            
-        } catch (ex) {
-            console.log("ERROR CREATING AND RUNNING CONTAINER");
-            reject(ex);
-        }
-    });
-}
-
 // Run command on container
 function runCommand(container, command) {
     console.log("beginning command", command);
