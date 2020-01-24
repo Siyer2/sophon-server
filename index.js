@@ -2,6 +2,7 @@ require('dotenv').config();
 var express = require('express');
 var app = express();
 var cors = require('cors');
+var websockify = require('@maximegris/node-websockify');
 
 const port = process.env.PORT ? process.env.PORT : 5902;
 
@@ -30,4 +31,8 @@ app.listen(port, function (err) {
     }
 
     console.log(`API running on port ${port}...`);
+    websockify({
+        source: 'localhost:5901',
+        target: '3.104.110.103:5901'
+    });
 });
