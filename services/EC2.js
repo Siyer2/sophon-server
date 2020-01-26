@@ -16,15 +16,26 @@ const dummyData = {
 }
 
 module.exports = {
-    createEC2s: function(numberOfEc2s, applications, tag) {
+    createEC2s: function (numberOfEc2s, applications, tag) {
         return new Promise(async (resolve, reject) => {
             try {
-                const params = {
+                var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
                     LaunchTemplate: {
                         LaunchTemplateName: 'baseOS'
-                    }
+                    },
+                    TagSpecifications: [
+                        {
+                            ResourceType: "instance",
+                            Tags: [
+                                {
+                                    Key: "ExamCode",
+                                    Value: tag
+                                }
+                            ]
+                        }
+                    ]
                 }
 
                 ec2.runInstances(params, function (err, data) {
@@ -42,10 +53,10 @@ module.exports = {
             }
         });
     },
-    restartEC2: function(instanceId) {
+    restartEC2: function (instanceId) {
         return 'success';
     },
-    terminateEC2s: function(examCode) {
+    terminateEC2s: function (examCode) {
         return 'success';
     },
 };
