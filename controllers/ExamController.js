@@ -39,7 +39,7 @@ router.post('/enter', async function (request, response) {
             await EC2.restartEC2(instanceId);
         }
         else {
-            // Create a whole new EC2
+            return response.status(400).json({ data: `No exam found for ${examCode}` });
         }
 
         // Wait for the instance to run
