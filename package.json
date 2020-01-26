@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@maximegris/node-websockify": "^1.0.7",
+    "aws-sdk": "^2.610.0",
     "concurrently": "^5.0.2",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
