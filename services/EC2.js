@@ -109,8 +109,35 @@ module.exports = {
                 reject(error);
             }
         })
-        return 'success';
     },
+    waitForRunningEC2: function(instanceId) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                var params = {
+                    Filters: [
+                        {
+                            Name: `instance-id`,
+                            Values: [
+                                instanceId
+                            ]
+                        }
+                    ]
+                };
+                ec2.waitFor('instanceRunning', params, function (err, data) {
+                    if (err) {
+                        console.log("AWS ERROR WAITING FOR RUNNING EC2", err);
+                        reject(err);
+                    }
+                    else {
+                        resolve(data);
+                    }
+                });
+            } catch (ex) {
+                console.log("ERROR WAITING FOR RUNNING EC2", ex);
+                reject(ex);
+            }
+        });
+    }
 };
 
 function getScript(applications) {
