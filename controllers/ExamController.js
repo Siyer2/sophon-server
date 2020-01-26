@@ -33,7 +33,11 @@ router.post('/enter', async function (request, response) {
         const ec2s = await EC2.listEC2sByTag("ExamCode", examCode);
 
         // Take the first one and start it
-        
+        if (ec2s.Reservations[0]) {
+            const instanceId = ec2s.Reservations[0].Instances[0].InstanceId;
+            const restartResult = await EC2.restartEC2(instanceId);
+            return response.json({ message: restartResult });
+        }
 
         // Get the public IP address 
 

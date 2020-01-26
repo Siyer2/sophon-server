@@ -38,7 +38,7 @@ module.exports = {
 
                 ec2.runInstances(params, function (err, data) {
                     if (err) {
-                        console.log("ERROR CREATING EC2 INSTANCE", err);
+                        console.log("AWS ERROR CREATING EC2 INSTANCE", err);
                         reject(err);
                     }
                     else {
@@ -52,7 +52,28 @@ module.exports = {
         });
     },
     restartEC2: function (instanceId) {
-        return 'success';
+        return new Promise(async (resolve, reject) => {
+            try {
+                var params = {
+                    InstanceIds: [
+                        instanceId
+                    ]
+                };
+                ec2.startInstances(params, function (err, data) {
+                    if (err) {
+                        console.log("AWS ERROR RESTARTING EC2", err);
+                        reject(err);
+                    }
+                    else {
+                        resolve(data);
+                    }
+                });
+
+            } catch (ex) {
+                console.log("ERROR RESTARTING EC2", ex);
+                reject(ex);
+            }
+        });
     },
     listEC2sByTag: function (name, tag) {
         return new Promise(async (resolve, reject) => {
@@ -68,7 +89,7 @@ module.exports = {
                         {
                             Name: 'instance-state-name',
                             Values: [
-                                'running'
+                                'stopped'
                             ]
                         }
                     ]
@@ -76,7 +97,7 @@ module.exports = {
                 
                 ec2.describeInstances(params, function(err, data) {
                     if (err) {
-                        console.log("FAILED TO DESCRIBE EC2s BY TAG", err);
+                        console.log("AWS ERROR TO DESCRIBE EC2s BY TAG", err);
                         reject(err);
                     }
                     else {
