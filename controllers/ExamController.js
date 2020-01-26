@@ -6,7 +6,7 @@ var EC2 = require('../services/EC2');
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
     try {
-        const createEC2s = await EC2.createEC2s(1, ['libreOffice'], 'TAGGED BY SYAM');
+        const createEC2s = await EC2.createEC2s(2, ['libreOffice'], 'TAGGED BY SYAM2');
         
         return response.json({ message: createEC2s });
     } catch (error) {
