@@ -31,8 +31,8 @@ app.listen(port, function (err) {
     }
 
     console.log(`API running on port ${port}...`);
-    websockify({
-        source: 'localhost:5901',
-        target: '3.104.110.103:5901'
-    });
+    // websockify({
+    //     source: 'localhost:5901',
+    //     target: '3.105.229.19:5901'
+    // });
 });

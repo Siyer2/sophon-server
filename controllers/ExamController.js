@@ -1,19 +1,18 @@
 var router = (require('express')).Router();
 var websockify = require('@maximegris/node-websockify');
 const { Docker } = require('node-docker-api');
+var EC2 = require('../services/EC2');
 
-const dummyData = {
-    libreOffice: {
-        commands: [
-            'apt-get update && apt-get install libreoffice -y --fix-missing'
-        ]
-    }, 
-    firefox: {
-        commands: [
-            'apt-get install firefox -y'
-        ]
+// Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
+router.post('/create', async function(request, response) {
+    try {
+        const createEC2s = EC2.createEC2s(1, ['libreOffice']);
+        
+        return response.json({ message: 'success' });
+    } catch (error) {
+        return response.status(500).json({ error });
     }
-}
+});
 
 // Student enters an exam
 router.post('/enter', async function (request, response) {
