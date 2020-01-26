@@ -15,6 +15,7 @@ module.exports = {
     createEC2s: function (numberOfEc2s, applications, tag) {
         return new Promise(async (resolve, reject) => {
             try {
+                const script = getScript(applications);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
@@ -32,7 +33,7 @@ module.exports = {
                             ]
                         }
                     ], 
-                    UserData: Buffer.from(getScript(applications)).toString('base64')
+                    UserData: Buffer.from(script).toString('base64')
                 }
 
                 ec2.runInstances(params, function (err, data) {
@@ -53,7 +54,40 @@ module.exports = {
     restartEC2: function (instanceId) {
         return 'success';
     },
-    terminateEC2s: function (examCode) {
+    listEC2sByTag: function (name, tag) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                var params = {
+                    Filters: [
+                        {
+                            Name: `tag:${name}`,
+                            Values: [
+                                tag
+                            ]
+                        }, 
+                        {
+                            Name: 'instance-state-name',
+                            Values: [
+                                'running'
+                            ]
+                        }
+                    ]
+                };
+                
+                ec2.describeInstances(params, function(err, data) {
+                    if (err) {
+                        console.log("FAILED TO DESCRIBE EC2s BY TAG", err);
+                        reject(err);
+                    }
+                    else {
+                        resolve(data);
+                    }
+                })
+            } catch (error) {
+                console.log("ERROR LISTING EC2s BY TAG", error);
+                reject(error);
+            }
+        })
         return 'success';
     },
 };
@@ -88,7 +122,7 @@ chmod +x $HOME/.vnc/xstartup
 vnc4server
 
 # Stop the server
-#sudo halt
+sudo halt
 `
     return userData;
 }
