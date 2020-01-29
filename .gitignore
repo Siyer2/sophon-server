@@ -22,4 +22,4 @@ yarn-error.log*
 node_modules
 
 # keys
-ec2Keys.json
+awsKeys.json

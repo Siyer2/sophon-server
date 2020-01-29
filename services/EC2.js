@@ -1,5 +1,5 @@
 var AWS = require('aws-sdk');
-AWS.config.loadFromPath('./ec2Keys.json');
+AWS.config.loadFromPath('./awKeys.json');
 const ec2 = new AWS.EC2();
 
 const dummyData = {
