@@ -24,6 +24,17 @@ router.post('/create', async function(request, response) {
 router.post('/enter', async function (request, response) {
     const examCode = request.body.examCode;
     try {
+        //==== TO DO ===//
+
+        // Get the exam (including applications and startuo message)
+
+        // Start a new EC2 and return it's IP address
+
+        // Wait till running
+
+        // Start the proxy server
+        //==== TO DO ===//
+
         // Get the required applications for the exam
         const applications = ['libreOffice']; // TO-DO: this should be pulled from the DB
         
