@@ -20,7 +20,7 @@ module.exports = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
                     LaunchTemplate: {
-                        LaunchTemplateName: 'baseOS'
+                        LaunchTemplateName: 'gnomeBaseOS'
                     },
                     TagSpecifications: [
                         {
