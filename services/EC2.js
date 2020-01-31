@@ -12,7 +12,7 @@ const dummyData = {
 }
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, applications, tag) {
+    createEC2s: function (numberOfEc2s, applications, tags) {
         return new Promise(async (resolve, reject) => {
             try {
                 const script = getScript(applications);
@@ -25,12 +25,7 @@ module.exports = {
                     TagSpecifications: [
                         {
                             ResourceType: "instance",
-                            Tags: [
-                                {
-                                    Key: "ExamCode",
-                                    Value: tag
-                                }
-                            ]
+                            Tags: tags
                         }
                     ], 
                     UserData: Buffer.from(script).toString('base64')
@@ -146,5 +141,10 @@ function getScript(applications) {
         applicationCommand += `${dummyData[application].command};`;
     });
 
-    return applicationCommand;
+    const script = `
+    #!/bin/bash
+
+    ${applicationCommand}
+    `;
+    return script;
 }
