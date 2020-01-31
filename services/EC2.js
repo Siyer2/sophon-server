@@ -1,13 +1,13 @@
 var AWS = require('aws-sdk');
-AWS.config.loadFromPath('./awKeys.json');
+AWS.config.loadFromPath('./awsKeys.json');
 const ec2 = new AWS.EC2();
 
 const dummyData = {
     libreOffice: {
-        command: 'libreoffice'
+        command: 'yes | sudo apt install libreoffice'
     },
     firefox: {
-        command: 'firefox'
+        command: 'yes | sudo apt install firefox'
     }
 }
 
@@ -143,34 +143,8 @@ module.exports = {
 function getScript(applications) {
     var applicationCommand = '';
     applications.map((application) => {
-        applicationCommand += `${dummyData[application].command} `;
+        applicationCommand += `${dummyData[application].command};`;
     });
 
-    const userData = `#!/bin/bash
-export HOME=/home/ubuntu
-
-# VNC setup
-yes | sudo apt-get update
-yes | sudo apt-get upgrade
-yes | sudo apt-get install --no-install-recommends ubuntu-desktop
-yes | sudo apt-get install xfce4 vnc4server gnome-panel gnome-settings-daemon metacity nautilus gnome-terminal ${applicationCommand}
-
-# Set password
-sudo printf "5e6rGCmd\n5e6rGCmd\n\n" | vnc4passwd
-
-mkdir $HOME/.vnc
-cat <<EOT >> home/ubuntu/.vnc/xstartup
-#!/bin/bash
-startxfce4 &
-EOT
-
-chmod +x $HOME/.vnc/xstartup
-
-# Start VNC
-vnc4server
-
-# Stop the server
-sudo halt
-`
-    return userData;
+    return applicationCommand;
 }
