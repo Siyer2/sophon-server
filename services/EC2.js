@@ -110,7 +110,7 @@ module.exports = {
             }
         })
     },
-    waitForRunningEC2: function(instanceId) {
+    waitFor: function(desiredState, instanceId) {
         return new Promise(async (resolve, reject) => {
             try {
                 var params = {
@@ -123,9 +123,9 @@ module.exports = {
                         }
                     ]
                 };
-                ec2.waitFor('instanceRunning', params, function (err, data) {
+                ec2.waitFor(desiredState, params, function (err, data) {
                     if (err) {
-                        console.log("AWS ERROR WAITING FOR RUNNING EC2", err);
+                        console.log("AWS ERROR WAITING FOR EC2", err);
                         reject(err);
                     }
                     else {
@@ -133,7 +133,7 @@ module.exports = {
                     }
                 });
             } catch (ex) {
-                console.log("ERROR WAITING FOR RUNNING EC2", ex);
+                console.log("ERROR WAITING FOR EC2", ex);
                 reject(ex);
             }
         });
