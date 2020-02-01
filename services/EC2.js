@@ -141,10 +141,11 @@ function getScript(applications) {
         applicationCommand += `${dummyData[application].command};`;
     });
 
-    const script = `
-    #!/bin/bash
+    const script = `#!/bin/bash
+yes | sudo apt-get update
+yes | sudo apt-get upgrade
 
-    ${applicationCommand}
+${applicationCommand}
     `;
     return script;
 }
