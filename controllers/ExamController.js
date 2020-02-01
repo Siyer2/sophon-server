@@ -1,6 +1,5 @@
 var router = (require('express')).Router();
 var websockify = require('@maximegris/node-websockify');
-const { Docker } = require('node-docker-api');
 var EC2 = require('../services/EC2');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
