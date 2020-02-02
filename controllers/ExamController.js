@@ -40,7 +40,7 @@ router.post('/enter', async function (request, response) {
         ];
 
         // Start a new EC2 and return it's IP address
-        const createEC2 = await EC2.createEC2s(1, applications, tags); // TO-DO: store examCode AND studentID in tags
+        const createEC2 = await EC2.createEC2s(1, applications, tags);
         const instanceId = createEC2.Instances[0].InstanceId;
         
         // Wait till running
@@ -51,13 +51,14 @@ router.post('/enter', async function (request, response) {
         
         // Start the proxy server
 
-        return response.json({ ec2s: publicIp });
+        return response.json({ publicIp, instanceId });
     } catch (error) {
         return response.status(500).json({ error });
     }
 });
 
 router.ws('/echo', function(client, request) {
+
     onConnectedCallback = null,
     onDisconnectedCallback = null;
     const target_port = 5901;
