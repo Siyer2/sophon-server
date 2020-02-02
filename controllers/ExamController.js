@@ -1,5 +1,4 @@
 var router = (require('express')).Router();
-var websockify = require('@maximegris/node-websockify');
 var EC2 = require('../services/EC2');
 var net = require('net');
 
@@ -57,12 +56,40 @@ router.post('/enter', async function (request, response) {
     }
 });
 
-router.ws('/echo', function(client, request) {
+router.ws('/enter', async function(client, request) {
+    const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
+    const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
 
+    // Get the exam (including applications and startup message)
+    const applications = ['libreOffice'];
+    const tags = [
+        {
+            Key: "ExamCode",
+            Value: examCode
+        },
+        {
+            Key: "StudentId",
+            Value: studentId
+        }
+    ];
+
+    // Start a new EC2 and return it's IP address
+    const createEC2 = await EC2.createEC2s(1, applications, tags);
+    const instanceId = createEC2.Instances[0].InstanceId;
+
+    // Wait till running
+    const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+
+    // Get the public IP address
+    const target_host = runningEC2.PublicIpAddress;
+
+    // Wait for some time
+    await sleep(60000);
+
+    // Start the proxy server
     onConnectedCallback = null,
     onDisconnectedCallback = null;
     const target_port = 5901;
-    const target_host = '13.55.184.104';
 
     console.log(`Connecting to ${target_host}:${target_port}...`);
 
@@ -116,5 +143,11 @@ router.ws('/echo', function(client, request) {
         target.end();
     });
 });
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+} 
 
 module.exports = router;
