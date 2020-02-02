@@ -57,36 +57,62 @@ router.post('/enter', async function (request, response) {
     }
 });
 
-router.ws('/echo', function(ws, request) {
+router.ws('/echo', function(client, request) {
     onConnectedCallback = null,
     onDisconnectedCallback = null;
     const target_port = 5901;
     const target_host = '13.55.184.104';
-    ws.on('open', function() {
-        console.log(`Connecting to ${target_host}:${target_port}...`);
-    });
+
+    console.log(`Connecting to ${target_host}:${target_port}...`);
 
     var target = net.createConnection(target_port, target_host, function () {
-        console.log('Connected to target');
         if (onConnectedCallback) {
             try {
                 onConnectedCallback(client, target);
             } catch (e) {
-                log("onConnectedCallback failed, cleaning up target");
+                console.log("onConnectedCallback failed, cleaning up target");
                 target.end();
             }
         }
     });
-    target.on('data', (data) => {
-        console.log("data", data);
-        ws.send(data);
-    });
-    target.on('end', () => {
-        console.log("Disconnected");
-    })
 
-    ws.on('message', function(msg) {
-        ws.send(msg);
+    target.on('data', function (data) {
+        try {
+            client.send(data);
+        } catch (e) {
+            console.log("Client closed, cleaning up target");
+            target.end();
+        }
+    });
+    target.on('end', function () {
+        console.log('target disconnected');
+        client.close();
+    });
+    target.on('error', function () {
+        console.log('target connection error');
+        target.end();
+        client.close();
+    });
+
+    client.on('message', function (msg) {
+        target.write(msg);
+    });
+    client.on('close', function (code, reason) {
+
+        if (onDisconnectedCallback) {
+            try {
+                onDisconnectedCallback(client, code, reason);
+            } catch (e) {
+                console.log("onDisconnectedCallback failed");
+            }
+        }
+
+        console.log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
+        target.end();
+    });
+    client.on('error', function (a) {
+        console.log('WebSocket client error: ' + a);
+        target.end();
     });
 });
 
