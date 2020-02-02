@@ -56,4 +56,10 @@ router.post('/enter', async function (request, response) {
     }
 });
 
+router.ws('/echo', function(ws, request) {
+    ws.on('message', function(msg) {
+        ws.send(msg);
+    });
+});
+
 module.exports = router;

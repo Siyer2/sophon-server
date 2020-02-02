@@ -2,6 +2,7 @@ require('dotenv').config();
 var express = require('express');
 var app = express();
 var cors = require('cors');
+require('express-ws')(app);
 var websockify = require('@maximegris/node-websockify');
 
 const port = process.env.PORT ? process.env.PORT : 5902;
