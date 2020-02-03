@@ -92,6 +92,7 @@ router.ws('/enter', async function(client, request) {
     const target_port = 5901;
 
     console.log(`Connecting to ${target_host}:${target_port}...`);
+    console.log(`Password: ${instanceId.substring(0, 8)}`);
 
     var target = net.createConnection(target_port, target_host, function () {
         if (onConnectedCallback) {
