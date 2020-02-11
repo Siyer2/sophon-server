@@ -7,11 +7,22 @@ const { Consumer } = require('sqs-consumer');
 
 router.get('/subscribe', async function(request, response) {
     try {
+        // TEST (DELETE)
+        const instanceId = 'i-0d4100a0f69da2f76';
+        // TEST (DELETE)
         const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
         const app = Consumer.create({
             queueUrl: queueUrl,
             handleMessage: async (message) => {
-                console.log('message', message);
+                console.log(message);
+                const msg = JSON.parse(message.Body);
+
+                if (msg.instanceId === instanceId) {
+                    console.log('goals', msg);
+                }
+                else {
+                    console.log('message', msg);
+                }
             },
             sqs: new AWS.SQS()
         });
@@ -24,10 +35,7 @@ router.get('/subscribe', async function(request, response) {
             console.error(err.message);
         });
 
-        console.log('Emails service is running');
         app.start();
-
-        return response.send("done");
     } catch (error) {
         return response.status(500).json({ error });
     }
