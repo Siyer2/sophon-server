@@ -4,23 +4,24 @@ var net = require('net');
 var AWS = require('aws-sdk');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
+const dJSON = require('dirty-json');
 
 router.get('/subscribe', async function(request, response) {
     try {
         // TEST (DELETE)
-        const instanceId = 'i-0d4100a0f69da2f76';
+        const instanceId = 'i-0ddf6b745dbd3b3d1';
         // TEST (DELETE)
         const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
         const app = Consumer.create({
             queueUrl: queueUrl,
             handleMessage: async (message) => {
-                console.log(message);
-                const msg = JSON.parse(message.Body);
+                const msg = dJSON.parse(message.Body);
 
-                if (msg.instanceId === instanceId) {
+                if (msg.instanceId.split('i').pop() === instanceId.split('-').pop()) {
                     console.log('goals', msg);
                 }
                 else {
+                    console.log(`${instanceId} is not what returned ${msg.instanceId}`)
                     console.log('message', msg);
                 }
             },
