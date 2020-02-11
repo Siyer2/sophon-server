@@ -1,6 +1,37 @@
 var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
+var AWS = require('aws-sdk');
+AWS.config.loadFromPath('./awsKeys.json');
+const { Consumer } = require('sqs-consumer');
+
+router.get('/subscribe', async function(request, response) {
+    try {
+        const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
+        const app = Consumer.create({
+            queueUrl: queueUrl,
+            handleMessage: async (message) => {
+                console.log('message', message);
+            },
+            sqs: new AWS.SQS()
+        });
+
+        app.on('error', (err) => {
+            console.error(err.message);
+        });
+
+        app.on('processing_error', (err) => {
+            console.error(err.message);
+        });
+
+        console.log('Emails service is running');
+        app.start();
+
+        return response.send("done");
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+})
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
