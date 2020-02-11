@@ -146,6 +146,9 @@ yes | sudo apt-get update
 yes | sudo apt-get upgrade
 
 ${applicationCommand}
+
+EC2_INSTANCE_ID=$(ec2metadata --instance-id)
+aws sqs send-message --queue-url https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates --message-body "{'instanceId':"$EC2_INSTANCE_ID", 'progress':'completed'}"
     `;
     return script;
 }
