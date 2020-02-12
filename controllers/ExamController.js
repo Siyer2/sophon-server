@@ -11,32 +11,9 @@ router.get('/subscribe', async function(request, response) {
         // TEST (DELETE)
         const instanceId = 'i-0ddf6b745dbd3b3d1';
         // TEST (DELETE)
-        const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
-        const app = Consumer.create({
-            queueUrl: queueUrl,
-            handleMessage: async (message) => {
-                const msg = dJSON.parse(message.Body);
+        const scriptResult = await waitForScriptsToLoad(instanceId);
 
-                if (msg.instanceId.split('i').pop() === instanceId.split('-').pop()) {
-                    console.log('goals', msg);
-                }
-                else {
-                    console.log(`${instanceId} is not what returned ${msg.instanceId}`)
-                    console.log('message', msg);
-                }
-            },
-            sqs: new AWS.SQS()
-        });
-
-        app.on('error', (err) => {
-            console.error(err.message);
-        });
-
-        app.on('processing_error', (err) => {
-            console.error(err.message);
-        });
-
-        app.start();
+        return response.json({ result: scriptResult });
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -123,8 +100,8 @@ router.ws('/enter', async function(client, request) {
     // Get the public IP address
     const target_host = runningEC2.PublicIpAddress;
 
-    // Wait for some time
-    await sleep(60000);
+    // Wait for the scripts to install
+    await waitForScriptsToLoad(instanceId);
 
     // Start the proxy server
     onConnectedCallback = null,
@@ -185,10 +162,29 @@ router.ws('/enter', async function(client, request) {
     });
 });
 
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
+function waitForScriptsToLoad(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
+            const app = Consumer.create({
+                queueUrl: queueUrl,
+                handleMessage: async (message) => {
+                    const msg = dJSON.parse(message.Body);
+
+                    if (msg.instanceId.split('i').pop() === instanceId.split('-').pop()) {
+                        console.log("Finished loading scripts", msg);
+                        resolve(msg);
+                    }
+                },
+                sqs: new AWS.SQS()
+            });
+
+            app.start();
+        } catch (ex) {
+            console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
     });
-} 
+}
 
 module.exports = router;
