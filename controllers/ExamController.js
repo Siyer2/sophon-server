@@ -6,19 +6,6 @@ AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const dJSON = require('dirty-json');
 
-router.get('/subscribe', async function(request, response) {
-    try {
-        // TEST (DELETE)
-        const instanceId = 'i-0e61fe278e7144bcc';
-        // TEST (DELETE)
-        const scriptResult = await waitForScriptsToLoad(instanceId);
-
-        return response.json({ result: scriptResult });
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-})
-
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
     const applications = request.body.applications;
