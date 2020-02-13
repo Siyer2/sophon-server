@@ -1,6 +1,10 @@
 var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
+var AWS = require('aws-sdk');
+AWS.config.loadFromPath('./awsKeys.json');
+const { Consumer } = require('sqs-consumer');
+const dJSON = require('dirty-json');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
@@ -83,8 +87,8 @@ router.ws('/enter', async function(client, request) {
     // Get the public IP address
     const target_host = runningEC2.PublicIpAddress;
 
-    // Wait for some time
-    await sleep(60000);
+    // Wait for the scripts to install
+    await waitForScriptsToLoad(instanceId);
 
     // Start the proxy server
     onConnectedCallback = null,
@@ -145,10 +149,27 @@ router.ws('/enter', async function(client, request) {
     });
 });
 
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
+function waitForScriptsToLoad(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
+            const app = Consumer.create({
+                queueUrl: queueUrl,
+                handleMessage: async (message) => {
+                    if (message.Body.toString() === instanceId) {
+                        console.log("Finished loading scripts", message.Body);
+                        resolve(message);
+                    }
+                },
+                sqs: new AWS.SQS()
+            });
+
+            app.start();
+        } catch (ex) {
+            console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
     });
-} 
+}
 
 module.exports = router;
