@@ -22,7 +22,7 @@ router.post('/auth', passport.authenticate('jwt', { session: false }), function 
 );
 
 //==== Authentication ====//
-router.post('/login', function (request, response, next) {
+router.post('/login', function (request, response) {
     try {
         passport.authenticate('local', { session: false }, (err, user, info) => {
             if (err || !user) {
