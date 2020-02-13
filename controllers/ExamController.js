@@ -9,7 +9,7 @@ const dJSON = require('dirty-json');
 router.get('/subscribe', async function(request, response) {
     try {
         // TEST (DELETE)
-        const instanceId = 'i-0ddf6b745dbd3b3d1';
+        const instanceId = 'i-0e61fe278e7144bcc';
         // TEST (DELETE)
         const scriptResult = await waitForScriptsToLoad(instanceId);
 
@@ -169,11 +169,9 @@ function waitForScriptsToLoad(instanceId) {
             const app = Consumer.create({
                 queueUrl: queueUrl,
                 handleMessage: async (message) => {
-                    const msg = dJSON.parse(message.Body);
-
-                    if (msg.instanceId.split('i').pop() === instanceId.split('-').pop()) {
-                        console.log("Finished loading scripts", msg);
-                        resolve(msg);
+                    if (message.Body.toString() === instanceId) {
+                        console.log("Finished loading scripts", message.Body);
+                        resolve(message);
                     }
                 },
                 sqs: new AWS.SQS()

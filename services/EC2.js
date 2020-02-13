@@ -148,7 +148,7 @@ yes | sudo apt-get upgrade
 ${applicationCommand}
 AWS_DEFAULT_REGION=ap-southeast-2
 EC2_INSTANCE_ID=$(ec2metadata --instance-id)
-  AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBYBL2NCUE  AWS_SECRET_ACCESS_KEY=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 aws sqs send-message --queue-url https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates --message-body "{'instanceId':"$EC2_INSTANCE_ID", 'progress':'completed'}"
+AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBZ5KOOXXF AWS_SECRET_ACCESS_KEY=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 aws sqs send-message --queue-url https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates --message-body "$EC2_INSTANCE_ID"
     `;
     return script;
 }
