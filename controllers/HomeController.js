@@ -16,29 +16,33 @@ router.get('/', function (request, response) {
     response.send('API is working @ 19:36');
 });
 
-router.post('/auth', passport.authenticate('jwt', { session: false }), function (req, res) {
-        res.send(req.user);
+router.post('/auth', passport.authenticate('jwt', { session: false }), function (request, response) {
+        response.send(request.user);
     }
 );
 
 //==== Authentication ====//
-router.post('/login', function (req, res, next) {
-    passport.authenticate('local', { session: false }, (err, user, info) => {
-        if (err || !user) {
-            return res.status(400).json({
-                message: 'Something is not right',
-                user: user
-            });
-        }
-        req.login(user, { session: false }, (err) => {
-            if (err) {
-                res.send(err);
+router.post('/login', function (request, response, next) {
+    try {
+        passport.authenticate('local', { session: false }, (err, user, info) => {
+            if (err || !user) {
+                return response.status(400).json({
+                    message: 'Something is not right',
+                    user: user
+                });
             }
-            // generate a signed son web token with the contents of user object and return it in the response
-            const token = jwt.sign(user, 'your_jwt_secret');
-            return res.json({ user, token });
-        });
-    })(req, res);
+            request.login(user, { session: false }, (err) => {
+                if (err) {
+                    response.send(err);
+                }
+                // generate a signed son web token with the contents of user object and return it in the response
+                const token = jwt.sign(user, 'your_jwt_secret');
+                return response.json({ user, token });
+            });
+        })(request, response);
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
 });
 
 module.exports = router;
