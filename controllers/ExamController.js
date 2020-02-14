@@ -4,7 +4,6 @@ var net = require('net');
 var AWS = require('aws-sdk');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
-const dJSON = require('dirty-json');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
