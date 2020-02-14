@@ -22,43 +22,6 @@ router.post('/create', async function(request, response) {
     }
 });
 
-// Student enters an exam
-router.post('/enter', async function (request, response) {
-    const examCode = request.body.examCode;
-    const studentId = request.body.studentId;
-
-    try {
-        // Get the exam (including applications and startup message)
-        const applications = ['libreOffice'];
-        const tags = [
-            {
-                Key: "ExamCode",
-                Value: examCode
-            },
-            {
-                Key: "StudentId",
-                Value: studentId
-            }
-        ];
-
-        // Start a new EC2 and return it's IP address
-        const createEC2 = await EC2.createEC2s(1, applications, tags);
-        const instanceId = createEC2.Instances[0].InstanceId;
-        
-        // Wait till running
-        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-
-        // Get the public IP address
-        const publicIp = runningEC2.PublicIpAddress;
-        
-        // Start the proxy server
-
-        return response.json({ publicIp, instanceId });
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
