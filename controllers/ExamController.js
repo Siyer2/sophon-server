@@ -2,21 +2,32 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
+var passport = require('passport');
+require('../services/passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
-router.post('/create', async function(request, response) {
+router.post('/create', passport.authenticate('jwt', { session: false }), async function(request, response) {
+    const examName = request.body.examName;
     const applications = request.body.applications;
     const startMessage = request.body.startMessage;
 
     try {
         // Create an exam code
+        const examCode = await createUniqueExamCode(request.db);
 
         // Save the exam code, start up message, applications in the database
+        const exam = await request.db.collection("exams").insert({
+            administratorId: request.user._id,
+            examName, 
+            examCode, 
+            applications: applications, 
+            startMessage
+        });
 
         // Return the exam code
-        return response.json({ message: "createEC2s" });
+        return response.json({ exam: exam.ops[0] });
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -129,6 +140,27 @@ function waitForScriptsToLoad(instanceId) {
             app.start();
         } catch (ex) {
             console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
+    });
+}
+
+function createUniqueExamCode(db) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Create a code
+            const code = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
+
+            // Check if it's unique
+            const codeExists = await db.collection('exams').findOne({ examCode: code });
+            if (codeExists) {
+                createUniqueExamCode(db);
+            }
+            else {
+                resolve(code);
+            }
+        } catch (ex) {
+            console.log("EXCEPTION CREATING UNIQUE EXAM CODE");
             reject(ex);
         }
     });

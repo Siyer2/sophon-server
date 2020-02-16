@@ -6,7 +6,8 @@ const ExtractJWT = passportJWT.ExtractJwt;
 
 // DUMMY DATA
 const user = {
-    email: 'iyersyam@gmail.com',
+    _id: '5e48a37e8f48f33ff8374e68',
+    email: 'iyersyam21@gmail.com',
     firstName: 'Syam',
     lastName: 'Iyer'
 }
