@@ -61,9 +61,15 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
+    const userId = request.user._id;
 
     // Get the exam (including applications and startup message)
-    const applications = ['libreOffice'];
+    const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+    if (!exam) {
+        client.close(400, `No exam found for code ${examCode}`);
+    }
+    const applications = exam.applications;
+    
     const tags = [
         {
             Key: "ExamCode",
