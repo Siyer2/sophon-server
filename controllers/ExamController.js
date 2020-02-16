@@ -58,6 +58,17 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
     return response.send(createEC2);
 });
 
+// Lists administrator's exams
+router.get('/list', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const exams = await request.db.collection("exams").find({ administratorId: String(request.user._id) }).toArray();
+
+        return response.json({ exams });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
@@ -69,7 +80,7 @@ router.ws('/enter', async function(client, request) {
         client.close(400, `No exam found for code ${examCode}`);
     }
     const applications = exam.applications;
-    
+
     const tags = [
         {
             Key: "ExamCode",
