@@ -7,7 +7,7 @@ const dbHelper = require('../services/database');
 // Additional libraries
 var moment = require('moment');
 
-router.use(function timeLog(request, response, next) {
+router.use(async function timeLog(request, response, next) {
     console.log(`Path: ${request.path}, Time: ${moment().format('LLLL')}`);
 
     // Pass DB object in request
@@ -18,8 +18,10 @@ router.use(function timeLog(request, response, next) {
 });
 
 //==== Testing ====//
-router.get('/', function (request, response) {
-    response.send('API is working @ 19:36');
+router.get('/', async function (request, response) {
+    // const users = await request.db.collection("users").find({ email: "iyersyam@gmail.com" }).toArray();
+    // console.log(users);
+    response.send('API is working || Version 19:36');
 });
 
 router.post('/auth', passport.authenticate('jwt', { session: false }), function (request, response) {

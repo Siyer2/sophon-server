@@ -10,7 +10,7 @@ class MongoDriver {
     connectClient() {
         return new Promise(async (resolve, reject) => {
             try {
-                console.log("connecting to", config.settings.DB_CONNECTION_STRING);
+                console.log("Connecting to DB...");
                 const client = await MongoClient.connect(config.settings.DB_CONNECTION_STRING, { useNewUrlParser: true, useUnifiedTopology: true });
                 db = client.db(config.settings.DB_NAME);
                 console.log("Connected!");
