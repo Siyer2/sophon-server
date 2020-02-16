@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const passport = require('passport');
 require('../services/passport');
 const dbHelper = require('../services/database');
+const bcrypt = require('bcrypt');
 
 // Additional libraries
 var moment = require('moment');
@@ -30,7 +31,7 @@ router.post('/auth', passport.authenticate('jwt', { session: false }), function 
 );
 
 //==== Authentication ====//
-router.post('/login', function (request, response) {
+router.post('/login', async function (request, response) {
     try {
         passport.authenticate('local', { session: false }, (err, user, info) => {
             if (err || !user) {
@@ -52,5 +53,64 @@ router.post('/login', function (request, response) {
         return response.status(500).json({ error });
     }
 });
+
+router.post('/signup', async function (request, response) {
+    try {
+        // Validate that the user doesn't already exist
+        const userExists = await request.db.collection("users").findOne({ email: request.body.email });
+        if (userExists) {
+            return response.status(400).json({ error: `User with ${request.body.email} already exists `});
+        }
+
+        // Hash the password
+        const hashedPassword = await hashPassword(request.body.password);
+        delete request.body.password;
+        const payload = Object.assign(request.body, { password: hashedPassword });
+
+        // Store the user
+        await request.db.collection("users").insertOne(payload);
+
+        // Login the user (TODO: Remove replication of code here)
+        passport.authenticate('local', { session: false }, (err, user, info) => {
+            if (err || !user) {
+                return response.status(400).json({
+                    message: 'Something is not right',
+                    user: user
+                });
+            }
+            request.login(user, { session: false }, (err) => {
+                if (err) {
+                    response.send(err);
+                }
+                // generate a signed son web token with the contents of user object and return it in the response
+                const token = jwt.sign(user, 'your_jwt_secret');
+                return response.json({ user, token });
+            });
+        })(request, response);
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+function hashPassword(plaintextPassword) {
+    return new Promise((resolve, reject) => {
+        try {
+            const saltRounds = 10;
+    
+            bcrypt.hash(plaintextPassword, saltRounds, function (err, hash) {
+                if (err) {
+                    console.log("BCRYPT EXCEPTION HASHING PASSWORD", err);
+                    reject(err);
+                }
+                
+                resolve(hash);
+            });
+    
+        } catch (ex) {
+            console.log("EXCEPTION HASHING PASSWORD", ex);
+            reject(ex);
+        }
+    });
+}
 
 module.exports = router;
