@@ -1,21 +1,14 @@
 var AWS = require('aws-sdk');
 AWS.config.loadFromPath('./awsKeys.json');
 const ec2 = new AWS.EC2();
-
-const dummyData = {
-    libreOffice: {
-        command: 'yes | sudo apt install libreoffice'
-    },
-    firefox: {
-        command: 'yes | sudo apt install firefox'
-    }
-}
+const dbHelper = require('../services/database');
+ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
     createEC2s: function (numberOfEc2s, applications, tags) {
         return new Promise(async (resolve, reject) => {
             try {
-                const script = getScript(applications);
+                const script = await getScript(applications);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
@@ -136,10 +129,33 @@ module.exports = {
 };
 
 function getScript(applications) {
-    var applicationCommand = '';
-    applications.map((application) => {
-        applicationCommand += `${dummyData[application].command};`;
-    });
+    return new Promise(async (resolve, reject) => {
+        try {
+            const applicationIds = applications.map((applicationId) => {
+                return ObjectId(applicationId);
+            });
+
+            // Get all commands
+            const db = await new dbHelper();
+            const commands = await db.collection('applications').aggregate([
+                {
+                    '$match': {
+                        '_id': {
+                            '$in': applicationIds
+                        }
+                    }
+                }, {
+                    '$project': {
+                        'command': 1
+                    }
+                }
+            ]).toArray();
+
+            // Convert from array to string
+            var applicationCommand = '';
+            commands.map((application) => {
+                applicationCommand += `${application.command};`;
+            });
 
     const script = `#!/bin/bash
 yes | sudo apt-get update
@@ -152,5 +168,9 @@ AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBZ5KOOXXF AWS_SEC
 
 sudo rm /etc/sudoers.d/90-cloud-init-users
     `;
-    return script;
+    resolve(script);
+        } catch (ex) {
+            console.log("EXCEPTION GETTING SCRIPT", ex);
+        }
+    });
 }

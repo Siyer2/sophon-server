@@ -7,7 +7,7 @@ require('../services/passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 
-// Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
+// Lecturer creates exam
 router.post('/create', passport.authenticate('jwt', { session: false }), async function(request, response) {
     const examName = request.body.examName;
     const applications = request.body.applications;
@@ -31,6 +31,31 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
     } catch (error) {
         return response.status(500).json({ error });
     }
+});
+
+router.post('/enter', passport.authenticate('jwt', { session: false }), async function(request, response) {
+    const examCode = request.body.examCode;
+    const studentId = request.body.studentId;
+    const userId = request.user._id;
+    
+    const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+    if (!exam) {
+        return response.status(400).json({ error: `No exam found for code ${examCode}` });
+    }
+    const applications = exam.applications;
+    const tags = [
+        {
+            Key: "ExamCode",
+            Value: examCode
+        },
+        {
+            Key: "StudentId",
+            Value: studentId
+        }
+    ];
+    const createEC2 = await EC2.createEC2s(1, applications, tags);
+
+    return response.send(createEC2);
 });
 
 router.ws('/enter', async function(client, request) {
