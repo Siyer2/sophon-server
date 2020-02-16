@@ -2,12 +2,18 @@ var router = (require('express')).Router();
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 require('../services/passport');
+const dbHelper = require('../services/database');
 
 // Additional libraries
 var moment = require('moment');
 
 router.use(function timeLog(request, response, next) {
     console.log(`Path: ${request.path}, Time: ${moment().format('LLLL')}`);
+
+    // Pass DB object in request
+    const db = await new dbHelper();
+    request.db = db;
+
     next();
 });
 
