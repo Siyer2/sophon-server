@@ -25,7 +25,7 @@ router.post('/create', async function(request, response) {
         });
 
         // Return the exam code
-        return response.json({ message: "createEC2s" });
+        return response.json({ message: exam.ops[0] });
     } catch (error) {
         return response.status(500).json({ error });
     }

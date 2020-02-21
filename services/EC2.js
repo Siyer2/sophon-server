@@ -12,10 +12,10 @@ const dummyData = {
 }
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, applications, tags) {
+    createEC2s: function (numberOfEc2s, applications, startMessage, tags) {
         return new Promise(async (resolve, reject) => {
             try {
-                const script = getScript(applications);
+                const script = getScript(applications, startMessage);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
@@ -135,7 +135,7 @@ module.exports = {
     }
 };
 
-function getScript(applications) {
+function getScript(applications, startMessage) {
     var applicationCommand = '';
     applications.map((application) => {
         applicationCommand += `${dummyData[application].command};`;
@@ -144,6 +144,13 @@ function getScript(applications) {
     const script = `#!/bin/bash
 yes | sudo apt-get update
 yes | sudo apt-get upgrade
+
+yes | sudo apt-get install gedit
+mkdir /home/ubuntu/Documents/{$subject}
+touch /home/ubuntu/Documents/{$subject}/start.txt
+cat <<EOT >> /home/ubuntu/Documents/{$subject}/start.txt
+${startMessage}
+EOT
 
 ${applicationCommand}
 AWS_DEFAULT_REGION=ap-southeast-2
