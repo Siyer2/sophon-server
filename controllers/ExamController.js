@@ -12,8 +12,16 @@ router.post('/create', async function(request, response) {
 
     try {
         // Create an exam code
+        const examCode = await createUniqueExamCode(request.db);
 
         // Save the exam code, start up message, applications in the database
+        const exam = await request.db.collection("exams").insert({
+            administratorId: request.user._id,
+            examName,
+            examCode,
+            applications: applications,
+            startMessage
+        });
 
         // Return the exam code
         return response.json({ message: "createEC2s" });
