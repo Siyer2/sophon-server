@@ -9,6 +9,7 @@ const { Consumer } = require('sqs-consumer');
 router.post('/create', async function(request, response) {
     const applications = request.body.applications;
     const startMessage = request.body.startMessage;
+    const administratorId = "SYAM-ADMIN"; // change to request.user._id in prod
 
     try {
         // Create an exam code
@@ -16,7 +17,7 @@ router.post('/create', async function(request, response) {
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insert({
-            administratorId: request.user._id,
+            administratorId: administratorId,
             examName,
             examCode,
             applications: applications,
@@ -137,6 +138,27 @@ function waitForScriptsToLoad(instanceId) {
             app.start();
         } catch (ex) {
             console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
+    });
+}
+
+function createUniqueExamCode(db) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Create a code
+            const code = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
+
+            // Check if it's unique
+            const codeExists = await db.collection('exams').findOne({ examCode: code });
+            if (codeExists) {
+                createUniqueExamCode(db);
+            }
+            else {
+                resolve(code);
+            }
+        } catch (ex) {
+            console.log("EXCEPTION CREATING UNIQUE EXAM CODE");
             reject(ex);
         }
     });
