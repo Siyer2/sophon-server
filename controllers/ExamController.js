@@ -40,8 +40,6 @@ router.ws('/enter', async function(client, request) {
     if (!exam) {
         client.close(400, `No exam found for code ${examCode}`);
     }
-    const applications = exam.applications;
-    const startMessage = exam.startMessage;
 
     const tags = [
         {
@@ -55,7 +53,7 @@ router.ws('/enter', async function(client, request) {
     ];
 
     // Start a new EC2 and return it's IP address
-    const createEC2 = await EC2.createEC2s(1, applications, startMessage, tags);
+    const createEC2 = await EC2.createEC2s(1, exam, tags);
     const instanceId = createEC2.Instances[0].InstanceId;
 
     // Wait till running

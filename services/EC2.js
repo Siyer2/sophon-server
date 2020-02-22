@@ -12,10 +12,10 @@ const dummyData = {
 }
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, applications, startMessage, tags) {
+    createEC2s: function (numberOfEc2s, exam, tags) {
         return new Promise(async (resolve, reject) => {
             try {
-                const script = getScript(applications, startMessage);
+                const script = getScript(exam);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
@@ -135,9 +135,9 @@ module.exports = {
     }
 };
 
-function getScript(applications, startMessage) {
+function getScript(exam) {
     var applicationCommand = '';
-    applications.map((application) => {
+    exam.applications.map((application) => {
         applicationCommand += `${dummyData[application].command};`;
     });
 
@@ -146,10 +146,10 @@ yes | sudo apt-get update
 yes | sudo apt-get upgrade
 
 yes | sudo apt-get install gedit
-mkdir /home/ubuntu/Documents/{$subject}
-touch /home/ubuntu/Documents/{$subject}/start.txt
-cat <<EOT >> /home/ubuntu/Documents/{$subject}/start.txt
-${startMessage}
+mkdir /home/ubuntu/Documents/${exam.examName}
+touch /home/ubuntu/Documents/${exam.examName}/start.txt
+cat <<EOT >> /home/ubuntu/Documents/${exam.examName}/start.txt
+${exam.startMessage}
 EOT
 
 ${applicationCommand}
