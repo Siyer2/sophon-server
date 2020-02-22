@@ -136,12 +136,35 @@ module.exports = {
 };
 
 function getScript(exam) {
-    var applicationCommand = '';
-    exam.applications.map((application) => {
-        applicationCommand += `${dummyData[application].command};`;
-    });
+    return new Promise(async (resolve, reject) => {
+        try {
+            const applicationIds = applications.map((applicationId) => {
+                return ObjectId(applicationId);
+            });
 
-    const script = `#!/bin/bash
+            // Get all commands
+            const db = await new dbHelper();
+            const commands = await db.collection('applications').aggregate([
+                {
+                    '$match': {
+                        '_id': {
+                            '$in': applicationIds
+                        }
+                    }
+                }, {
+                    '$project': {
+                        'command': 1
+                    }
+                }
+            ]).toArray();
+
+            // Convert from array to string
+            var applicationCommand = '';
+            commands.map((application) => {
+                applicationCommand += `${application.command};`;
+            });
+
+            const script = `#!/bin/bash
 yes | sudo apt-get update
 yes | sudo apt-get upgrade
 
@@ -159,5 +182,10 @@ AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBZ5KOOXXF AWS_SEC
 
 sudo rm /etc/sudoers.d/90-cloud-init-users
     `;
-    return script;
+            resolve(script);
+        } catch (ex) {
+            console.log("EXCEPTION GETTING SCRIPT", ex);
+            reject(ex);
+        }
+    });
 }
