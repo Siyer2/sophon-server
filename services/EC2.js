@@ -162,8 +162,7 @@ yes | sudo apt-get update
 yes | sudo apt-get upgrade
 
 yes | sudo apt-get install gedit
-mkdir /home/ubuntu/Documents/${exam.examName.replace(/ /g, "_")}
-echo ${exam.startMessage} >/home/ubuntu/Documents/${exam.examName.replace(/ /g, "_")}/start.txt
+echo ${exam.startMessage} >/home/ubuntu/Desktop/${exam.examName.replace(/ /g, "_")}.txt
 
 ${applicationCommand}
 AWS_DEFAULT_REGION=ap-southeast-2
@@ -171,6 +170,7 @@ EC2_INSTANCE_ID=$(ec2metadata --instance-id)
 AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBZ5KOOXXF AWS_SECRET_ACCESS_KEY=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 aws sqs send-message --queue-url https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates --message-body "$EC2_INSTANCE_ID"
 
 sudo rm /etc/sudoers.d/90-cloud-init-users
+
     `;
             resolve(script);
         } catch (ex) {
