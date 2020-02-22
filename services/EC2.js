@@ -1,15 +1,8 @@
 var AWS = require('aws-sdk');
 AWS.config.loadFromPath('./awsKeys.json');
 const ec2 = new AWS.EC2();
-
-const dummyData = {
-    libreOffice: {
-        command: 'yes | sudo apt install libreoffice'
-    },
-    firefox: {
-        command: 'yes | sudo apt install firefox'
-    }
-}
+const dbHelper = require('../services/database');
+ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
     createEC2s: function (numberOfEc2s, exam, tags) {
