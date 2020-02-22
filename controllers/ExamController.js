@@ -31,6 +31,51 @@ router.post('/create', async function(request, response) {
     }
 });
 
+// Test function
+router.post('/enter', async function(request, response) {
+    try {
+        const examCode = request.body.examCode;
+        const studentId = request.body.studentId;
+
+        // Get the exam (including applications and startup message)
+        const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+        if (!exam) {
+            return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
+        }
+
+        const tags = [
+            {
+                Key: "ExamCode",
+                Value: examCode
+            },
+            {
+                Key: "StudentId",
+                Value: studentId
+            }
+        ];
+
+        // Start a new EC2 and return it's IP address
+        const createEC2 = await EC2.createEC2s(1, exam, tags);
+        console.log("Successfully created EC2");
+        const instanceId = createEC2.Instances[0].InstanceId;
+
+        // Wait till running
+        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+        console.log("Finished running");
+        
+        // Get the public IP address
+        const target_host = runningEC2.PublicIpAddress;
+        
+        // Wait for the scripts to install
+        await waitForScriptsToLoad(instanceId);
+        console.log("Finished waiting");
+
+        return response.json({ status: 'ready' });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+})
+
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';

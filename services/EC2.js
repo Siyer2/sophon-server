@@ -8,7 +8,7 @@ module.exports = {
     createEC2s: function (numberOfEc2s, exam, tags) {
         return new Promise(async (resolve, reject) => {
             try {
-                const script = getScript(exam);
+                const script = await getScript(exam);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
@@ -131,7 +131,7 @@ module.exports = {
 function getScript(exam) {
     return new Promise(async (resolve, reject) => {
         try {
-            const applicationIds = applications.map((applicationId) => {
+            const applicationIds = exam.applications.map((applicationId) => {
                 return ObjectId(applicationId);
             });
 
@@ -162,11 +162,8 @@ yes | sudo apt-get update
 yes | sudo apt-get upgrade
 
 yes | sudo apt-get install gedit
-mkdir /home/ubuntu/Documents/${exam.examName}
-touch /home/ubuntu/Documents/${exam.examName}/start.txt
-cat <<EOT >> /home/ubuntu/Documents/${exam.examName}/start.txt
-${exam.startMessage}
-EOT
+mkdir /home/ubuntu/Documents/${exam.examName.replace(/ /g, "_")}
+echo ${exam.startMessage} >/home/ubuntu/Documents/${exam.examName.replace(/ /g, "_")}/start.txt
 
 ${applicationCommand}
 AWS_DEFAULT_REGION=ap-southeast-2
