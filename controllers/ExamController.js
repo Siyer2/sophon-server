@@ -36,7 +36,13 @@ router.ws('/enter', async function(client, request) {
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
 
     // Get the exam (including applications and startup message)
-    const applications = ['libreOffice'];
+    const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+    if (!exam) {
+        client.close(400, `No exam found for code ${examCode}`);
+    }
+    const applications = exam.applications;
+    const startMessage = exam.startMessage;
+
     const tags = [
         {
             Key: "ExamCode",
@@ -49,7 +55,7 @@ router.ws('/enter', async function(client, request) {
     ];
 
     // Start a new EC2 and return it's IP address
-    const createEC2 = await EC2.createEC2s(1, applications, tags);
+    const createEC2 = await EC2.createEC2s(1, applications, startMessage, tags);
     const instanceId = createEC2.Instances[0].InstanceId;
 
     // Wait till running
