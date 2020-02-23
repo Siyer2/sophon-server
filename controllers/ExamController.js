@@ -7,6 +7,7 @@ var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
+const config = require('../config');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
@@ -197,7 +198,7 @@ router.post('/enter', async function (request, response) {
 
 router.get('/submit', async function (request, response) {
     try {
-        const directory = 'z5113480_i09'; // TODO: Make this dynamic
+        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
         await getStudentSubmission('54.206.53.30', directory);
         // console.log(fs.existsSync(`./${directory}`));
         return response.send("success");
@@ -206,27 +207,61 @@ router.get('/submit', async function (request, response) {
     }
 });
 
-function getStudentSubmission(PublicIpAddress, directory) {
+function uploadToS3(file, filepath) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var s3 = new AWS.S3({
+                apiVersion: '2006-03-01',
+                params: {
+                    Bucket: config.settings.SUBMISSION_BUCKET
+                }
+            });
+            
+            const uploadParams = {
+                Bucket: config.settings.SUBMISSION_BUCKET,
+                Key: filepath,
+                Body: file
+            }
+
+            s3.upload(uploadParams, function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR UPLOADING TO S3", err);
+                } if (data) {
+                    resolve(data.Location);
+                }
+            });  
+        } catch (ex) {
+            console.log("EXCEPTION UPLOADING TO S3", ex);
+            reject(ex);
+        }
+    });
+}
+
+function getStudentSubmission(publicIpAddress, directory) {
     return new Promise(async (resolve, reject) => {
         try {
             sftp.connect({
-                host: PublicIpAddress,
+                host: publicIpAddress,
                 username: 'ubuntu',
                 privateKey: fs.readFileSync('os.pem')
             }).then(() => {
-                // will return an array of objects with information about all files in the remote folder
                 return sftp.list('/home/ubuntu/Desktop/submit/');
             }).then((data) => {
                 len = data.length;
                 data.forEach(x => {
                     let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
-                    sftp.get(remoteFilePath).then((stream) => {
-                        let file = `./${directory}/${x.name}`;
-                        fs.writeFile(file, stream, (err) => {
-                            if (err) console.log(err);
-                        });
+                    sftp.get(remoteFilePath).then(async (stream) => {
+                        let file = `${directory}/${x.name}`;
+
+                        // Save the submission in S3
+                        const savedLocation = await uploadToS3(stream, file);
+
+                        // Upload the saved location to mongo
+                        console.log(savedLocation);
                     });
                 });
+
+                resolve();
             }).catch((err) => {
                 console.log(err, 'catch error');
                 reject(err);
