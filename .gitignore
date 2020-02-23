@@ -24,3 +24,4 @@ node_modules
 
 # keys
 awsKeys.json
+*.pem
