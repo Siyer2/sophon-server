@@ -2,6 +2,9 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
+var fs = require('fs');
+var Client = require('ssh2-sftp-client');
+var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 
@@ -194,47 +197,46 @@ router.post('/enter', async function (request, response) {
 
 router.get('/submit', async function (request, response) {
     try {
-        const directory = 'z5113480_i09';
-        let fs = require('fs');
-        let Client = require('ssh2-sftp-client');
-        let sftp = new Client();
-
-        sftp.connect({
-            host: '54.206.53.30',
-            username: 'ubuntu',
-            privateKey: fs.readFileSync('os.pem')
-        }).then(() => {
-            // will return an array of objects with information about all files in the remote folder
-            return sftp.list('/home/ubuntu/Desktop/submit/');
-        }).then(async (data) => {
-            len = data.length;
-            await data.forEach(x => {
-                let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
-                sftp.get(remoteFilePath).then((stream) => {
-                    // TODO: create the folder name {studentId_instanceId}
-                    if (!fs.existsSync(`./${directory}`)) {
-                        fs.mkdirSync(`./${directory}`);
-                    }
-                    let file = `./${directory}/${x.name}`;
-                    fs.writeFile(file, stream, (err) => {
-                        if (err) console.log(err);
-                    });
-
-                    // TODO: save to S3
-
-                    // TODO: delete the local file
-                });
-            });
-
-            return response.send("success");
-
-        }).catch((err) => {
-            console.log(err, 'catch error');
-        });
+        const directory = 'z5113480_i09'; // TODO: Make this dynamic
+        await getStudentSubmission('54.206.53.30', directory);
+        // console.log(fs.existsSync(`./${directory}`));
+        return response.send("success");
     } catch (error) {
         return response.status(500).json({ error });
     }
 });
+
+function getStudentSubmission(PublicIpAddress, directory) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            sftp.connect({
+                host: PublicIpAddress,
+                username: 'ubuntu',
+                privateKey: fs.readFileSync('os.pem')
+            }).then(() => {
+                // will return an array of objects with information about all files in the remote folder
+                return sftp.list('/home/ubuntu/Desktop/submit/');
+            }).then((data) => {
+                len = data.length;
+                data.forEach(x => {
+                    let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
+                    sftp.get(remoteFilePath).then((stream) => {
+                        let file = `./${directory}/${x.name}`;
+                        fs.writeFile(file, stream, (err) => {
+                            if (err) console.log(err);
+                        });
+                    });
+                });
+            }).catch((err) => {
+                console.log(err, 'catch error');
+                reject(err);
+            });
+        } catch (ex) {
+            reject(ex);
+            console.log("EXCEPTION GETTING SUBMIT FOLDER", ex);
+        }
+    });
+}
 
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
