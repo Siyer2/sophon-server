@@ -194,6 +194,7 @@ router.post('/enter', async function (request, response) {
 
 router.get('/submit', async function (request, response) {
     try {
+        const directory = 'z5113480_i09';
         let fs = require('fs');
         let Client = require('ssh2-sftp-client');
         let sftp = new Client();
@@ -211,7 +212,10 @@ router.get('/submit', async function (request, response) {
                 let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
                 sftp.get(remoteFilePath).then((stream) => {
                     // TODO: create the folder name {studentId_instanceId}
-                    let file = './' + x.name;
+                    if (!fs.existsSync(`./${directory}`)) {
+                        fs.mkdirSync(`./${directory}`);
+                    }
+                    let file = `./${directory}/${x.name}`;
                     fs.writeFile(file, stream, (err) => {
                         if (err) console.log(err);
                     });
