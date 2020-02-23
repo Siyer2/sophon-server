@@ -201,23 +201,24 @@ router.get('/submit', async function (request, response) {
         sftp.connect({
             host: '54.206.53.30',
             username: 'ubuntu',
-            // path: '/home/ubuntu/Desktop/submit/',
             privateKey: fs.readFileSync('os.pem')
         }).then(() => {
             // will return an array of objects with information about all files in the remote folder
             return sftp.list('/home/ubuntu/Desktop/submit/');
         }).then(async (data) => {
-            // data is the array of objects
             len = data.length;
-            // x is one element of the array
             await data.forEach(x => {
                 let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
                 sftp.get(remoteFilePath).then((stream) => {
-                    // save to local folder ftp
+                    // TODO: create the folder name {studentId_instanceId}
                     let file = './' + x.name;
                     fs.writeFile(file, stream, (err) => {
                         if (err) console.log(err);
                     });
+
+                    // TODO: save to S3
+
+                    // TODO: delete the local file
                 });
             });
 
