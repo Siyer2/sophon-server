@@ -7,6 +7,7 @@ const { Consumer } = require('sqs-consumer');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
+    const examName = request.body.examName;
     const applications = request.body.applications;
     const startMessage = request.body.startMessage;
     const administratorId = "SYAM-ADMIN"; // change to request.user._id in prod
