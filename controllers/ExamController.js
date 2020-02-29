@@ -17,7 +17,7 @@ router.post('/create', async function(request, response) {
         const examCode = await createUniqueExamCode(request.db);
 
         // Save the exam code, start up message, applications in the database
-        const exam = await request.db.collection("exams").insert({
+        const exam = await request.db.collection("exams").insertOne({
             administratorId: administratorId,
             examName,
             examCode,
