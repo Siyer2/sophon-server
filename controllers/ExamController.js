@@ -199,7 +199,7 @@ router.post('/enter', async function (request, response) {
 router.get('/submit', async function (request, response) {
     try {
         const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
-        await getStudentSubmission('54.206.53.30', directory);
+        await getStudentSubmission('54.252.243.233', directory);
         // console.log(fs.existsSync(`./${directory}`));
         return response.send("success");
     } catch (error) {
@@ -240,16 +240,18 @@ function uploadToS3(file, filepath) {
 function getStudentSubmission(publicIpAddress, directory) {
     return new Promise(async (resolve, reject) => {
         try {
+            console.log("Attempting connection to instance...", publicIpAddress);
             sftp.connect({
                 host: publicIpAddress,
-                username: 'ubuntu',
-                privateKey: fs.readFileSync('os.pem')
+                username: 'Administrator',
+                password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
+                port: '22'
             }).then(() => {
-                return sftp.list('/home/ubuntu/Desktop/submit/');
+                return sftp.list('C:/Users/Administrator/Desktop/submit');
             }).then((data) => {
                 len = data.length;
                 data.forEach(x => {
-                    let remoteFilePath = '/home/ubuntu/Desktop/submit/' + x.name;
+                    let remoteFilePath = 'C:/Users/Administrator/Desktop/submit/' + x.name;
                     sftp.get(remoteFilePath).then(async (stream) => {
                         let file = `${directory}/${x.name}`;
 
