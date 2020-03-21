@@ -255,6 +255,30 @@ function uploadToS3(file, filepath) {
     });
 }
 
+// Upload the lecturer's questions to a running instance
+function uploadQuestions(publicIpAddress, s3Location) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            console.log("Attempting connection to instance...", publicIpAddress);
+            sftp.connect({
+                host: publicIpAddress,
+                username: 'Administrator',
+                password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
+                port: '22'
+            }).then(() => {
+                // return sftp.list('C:/Users/Administrator/Desktop/submit');
+                return sftp.put('', 'C:/Users/Administrator/Desktop/');
+            }).catch((err) => {
+                console.log(err, 'catch error');
+                reject(err);
+            });
+        } catch (ex) {
+            reject(ex);
+            console.log("EXCEPTION GETTING SUBMIT FOLDER", ex);
+        }
+    });
+}
+
 function getStudentSubmission(publicIpAddress, directory) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -276,7 +300,7 @@ function getStudentSubmission(publicIpAddress, directory) {
                         // Save the submission in S3
                         const savedLocation = await uploadToS3(stream, file);
 
-                        // Upload the saved location to mongo
+                        // TO-DO: Upload the saved location to mongo
                         console.log(savedLocation);
                     });
                 });
