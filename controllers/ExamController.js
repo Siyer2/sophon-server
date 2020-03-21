@@ -2,8 +2,12 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
+var fs = require('fs');
+var Client = require('ssh2-sftp-client');
+var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
+const config = require('../config');
 
 // Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
 router.post('/create', async function(request, response) {
@@ -31,51 +35,6 @@ router.post('/create', async function(request, response) {
         return response.status(500).json({ error });
     }
 });
-
-// Test function
-router.post('/enter', async function(request, response) {
-    try {
-        const examCode = request.body.examCode;
-        const studentId = request.body.studentId;
-
-        // Get the exam (including applications and startup message)
-        const exam = await request.db.collection("exams").findOne({ examCode: examCode });
-        if (!exam) {
-            return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
-        }
-
-        const tags = [
-            {
-                Key: "ExamCode",
-                Value: examCode
-            },
-            {
-                Key: "StudentId",
-                Value: studentId
-            }
-        ];
-
-        // Start a new EC2 and return it's IP address
-        const createEC2 = await EC2.createEC2s(1, exam, tags);
-        console.log("Successfully created EC2");
-        const instanceId = createEC2.Instances[0].InstanceId;
-
-        // Wait till running
-        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-        console.log("Finished running");
-        
-        // Get the public IP address
-        const target_host = runningEC2.PublicIpAddress;
-        
-        // Wait for the scripts to install
-        await waitForScriptsToLoad(instanceId);
-        console.log("Finished waiting");
-
-        return response.json({ status: 'ready' });
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-})
 
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
@@ -189,6 +148,130 @@ function waitForScriptsToLoad(instanceId) {
         } catch (ex) {
             console.log("EXCEPTION waiting for scripts to load", ex);
             reject(ex);
+        }
+    });
+}
+
+//==== Test functions ====//
+router.post('/enter', async function (request, response) {
+    try {
+        const examCode = request.body.examCode;
+        const studentId = request.body.studentId;
+
+        // Get the exam (including applications and startup message)
+        const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+        if (!exam) {
+            return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
+        }
+
+        const tags = [
+            {
+                Key: "ExamCode",
+                Value: examCode
+            },
+            {
+                Key: "StudentId",
+                Value: studentId
+            }
+        ];
+
+        // Start a new EC2 and return it's IP address
+        const createEC2 = await EC2.createEC2s(1, exam, tags);
+        console.log("Successfully created EC2");
+        const instanceId = createEC2.Instances[0].InstanceId;
+
+        // Wait till running
+        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+        console.log("Finished running");
+
+        // Get the public IP address
+        const target_host = runningEC2.PublicIpAddress;
+
+        // Wait for the scripts to install
+        await waitForScriptsToLoad(instanceId);
+        console.log("Finished waiting");
+
+        return response.json({ status: 'ready' });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+router.get('/submit', async function (request, response) {
+    try {
+        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
+        await getStudentSubmission('54.252.243.233', directory);
+        // console.log(fs.existsSync(`./${directory}`));
+        return response.send("success");
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+function uploadToS3(file, filepath) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var s3 = new AWS.S3({
+                apiVersion: '2006-03-01',
+                params: {
+                    Bucket: config.settings.SUBMISSION_BUCKET
+                }
+            });
+            
+            const uploadParams = {
+                Bucket: config.settings.SUBMISSION_BUCKET,
+                Key: filepath,
+                Body: file
+            }
+
+            s3.upload(uploadParams, function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR UPLOADING TO S3", err);
+                } if (data) {
+                    resolve(data.Location);
+                }
+            });  
+        } catch (ex) {
+            console.log("EXCEPTION UPLOADING TO S3", ex);
+            reject(ex);
+        }
+    });
+}
+
+function getStudentSubmission(publicIpAddress, directory) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            console.log("Attempting connection to instance...", publicIpAddress);
+            sftp.connect({
+                host: publicIpAddress,
+                username: 'Administrator',
+                password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
+                port: '22'
+            }).then(() => {
+                return sftp.list('C:/Users/Administrator/Desktop/submit');
+            }).then((data) => {
+                len = data.length;
+                data.forEach(x => {
+                    let remoteFilePath = 'C:/Users/Administrator/Desktop/submit/' + x.name;
+                    sftp.get(remoteFilePath).then(async (stream) => {
+                        let file = `${directory}/${x.name}`;
+
+                        // Save the submission in S3
+                        const savedLocation = await uploadToS3(stream, file);
+
+                        // Upload the saved location to mongo
+                        console.log(savedLocation);
+                    });
+                });
+
+                resolve();
+            }).catch((err) => {
+                console.log(err, 'catch error');
+                reject(err);
+            });
+        } catch (ex) {
+            reject(ex);
+            console.log("EXCEPTION GETTING SUBMIT FOLDER", ex);
         }
     });
 }

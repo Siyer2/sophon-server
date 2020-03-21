@@ -26,6 +26,7 @@
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
-    "sqs-consumer": "^5.4.0"
+    "sqs-consumer": "^5.4.0",
+    "ssh2-sftp-client": "^5.0.2"
   }
 }
