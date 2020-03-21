@@ -210,7 +210,7 @@ router.get('/submit', async function (request, response) {
 
 //== Test endpoint ==//
 // This endpoint tests when a lecturer uploads a question for students. 
-router.get('/upload', async function(request, response) {
+router.post('/upload', async function(request, response) {
     const lecturerId = request.body.lecturerId;
     const examCode = request.body.examCode;
 
@@ -219,41 +219,40 @@ router.get('/upload', async function(request, response) {
         // So this endpoint will wait for an instance to be running at this point
 
 
+        
+
+        // Get the files in the location and store in an array of readable streams
         // Initialise S3
         var s3 = new AWS.S3({
             apiVersion: '2006-03-01'
         });
-
-        // Get the files in the location and store in an array of readable streams
-        var files = [];
         var listParams = {
-            Bucket: config.settings.UPLOAD_BUCKET, 
+            Bucket: config.settings.UPLOAD_BUCKET,
             Prefix: `${lecturerId}/${examCode}/`
         }
-        s3.listObjectsV2(listParams, function (err, data) {
+        s3.listObjectsV2(listParams, async function (err, data) {
             if (err) {
                 return response.status(500).json({ message: 'Error listing objects', error: err });
             }
             else {
-                data.Contents.map(async (file) => {
-                    // Get the object
-                    const object = s3.getObject({
-                        Bucket: config.settings.UPLOAD_BUCKET,
-                        Key: file.Key
-                    }).createReadStream();
+                const promises = data.Contents.map((file) => {
+                    return new Promise(async (resolve, reject) => {
+                        // Get the object
+                        const object = s3.getObject({
+                            Bucket: config.settings.UPLOAD_BUCKET,
+                            Key: file.Key
+                        }).createReadStream();
     
-                    // Add to the files array
-                    files.push(object);
+                        // Add to the files array
+                        resolve(object);
+                    });
                 });
+
+                const files = await Promise.all(promises);
+                await pushFilesToInstance('54.252.188.35', files);
+                return response.send("success");
             }
         });
-
-
-        // Upload the files on to the running instance
-        await pushFilesToInstance('54.252.243.233', files);
-
-        return response.send("success");
-
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -300,6 +299,7 @@ function pushFilesToInstance(publicIpAddress, files) {
                 password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
                 port: '22'
             }).then(() => {
+                console.log("Connected to instance", publicIpAddress);
                 files.map(async (file) => {
                     // Push to remote desktop
                     await sftp.put(file, 'C:/Users/Administrator/Desktop/');
@@ -324,7 +324,7 @@ function getStudentSubmission(publicIpAddress, directory) {
             sftp.connect({
                 host: publicIpAddress,
                 username: 'Administrator',
-                password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
+                password: '%WuzAjXxMQeXpU.jK&;Z)6Bn8BSC8C6p',
                 port: '22'
             }).then(() => {
                 return sftp.list('C:/Users/Administrator/Desktop/submit');
