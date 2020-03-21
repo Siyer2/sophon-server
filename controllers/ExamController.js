@@ -211,15 +211,49 @@ router.get('/submit', async function (request, response) {
 //== Test endpoint ==//
 // This endpoint tests when a lecturer uploads a question for students. 
 router.get('/upload', async function(request, response) {
+    const lecturerId = request.body.lecturerId;
+    const examCode = request.body.examCode;
+
     try {
         // NOTE: in prod, this will get called when a student runs an exam
         // So this endpoint will wait for an instance to be running at this point
 
 
-        // Get the files from S3
+        // Initialise S3
+        var s3 = new AWS.S3({
+            apiVersion: '2006-03-01'
+        });
+
+        // Get the files in the location and store in an array of readable streams
+        var files = [];
+        var listParams = {
+            Bucket: config.settings.UPLOAD_BUCKET, 
+            Prefix: `${lecturerId}/${examCode}/`
+        }
+        s3.listObjectsV2(listParams, function (err, data) {
+            if (err) {
+                return response.status(500).json({ message: 'Error listing objects', error: err });
+            }
+            else {
+                data.Contents.map(async (file) => {
+                    // Get the object
+                    const object = s3.getObject({
+                        Bucket: config.settings.UPLOAD_BUCKET,
+                        Key: file.Key
+                    }).createReadStream();
+    
+                    // Add to the files array
+                    files.push(object);
+                });
+            }
+        });
 
 
-        // Upload it on to the running instance
+        // Upload the files on to the running instance
+        await pushFilesToInstance('54.252.243.233', files);
+
+        return response.send("success");
+
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -256,7 +290,7 @@ function uploadToS3(file, filepath) {
 }
 
 // Upload the lecturer's questions to a running instance
-function uploadQuestions(publicIpAddress, s3Location) {
+function pushFilesToInstance(publicIpAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
             console.log("Attempting connection to instance...", publicIpAddress);
@@ -266,15 +300,19 @@ function uploadQuestions(publicIpAddress, s3Location) {
                 password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
                 port: '22'
             }).then(() => {
-                // return sftp.list('C:/Users/Administrator/Desktop/submit');
-                return sftp.put('', 'C:/Users/Administrator/Desktop/');
+                files.map(async (file) => {
+                    // Push to remote desktop
+                    await sftp.put(file, 'C:/Users/Administrator/Desktop/');
+                });
+
+                resolve();
             }).catch((err) => {
                 console.log(err, 'catch error');
                 reject(err);
             });
         } catch (ex) {
             reject(ex);
-            console.log("EXCEPTION GETTING SUBMIT FOLDER", ex);
+            console.log("EXCEPTION PUSHING FILES TO INSTANCE", ex);
         }
     });
 }
