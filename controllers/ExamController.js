@@ -2,7 +2,6 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
-var fs = require('fs');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
@@ -237,18 +236,32 @@ router.post('/upload', async function(request, response) {
             else {
                 const promises = data.Contents.map((file) => {
                     return new Promise(async (resolve, reject) => {
-                        // Get the object
-                        const object = s3.getObject({
-                            Bucket: config.settings.UPLOAD_BUCKET,
-                            Key: file.Key
-                        }).createReadStream();
-    
-                        // Add to the files array
-                        resolve(object);
+                        try {
+                            // Get the object
+                            s3.getObject({
+                                Bucket: config.settings.UPLOAD_BUCKET,
+                                Key: file.Key
+                            }, function (err, data) {
+                                if (err) {
+                                    console.log("AWS ERROR GETTING OBJECT", err);
+                                    reject(err);
+                                }
+                                else {
+                                    // Add to the files array
+                                    if (data.Body) {
+                                        console.log(file.Key);
+                                        resolve({ file: data.Body, filename: file.Key.substring(file.Key.lastIndexOf("/") + 1) });
+                                    }
+                                }
+                            });
+                        } catch (ex) {
+                            reject("EXCEPTION GETTING OBJECT", ex);
+                        }
                     });
                 });
 
                 const files = await Promise.all(promises);
+                console.log(files.length);
                 await pushFilesToInstance('54.252.188.35', files);
                 return response.send("success");
             }
@@ -300,14 +313,20 @@ function pushFilesToInstance(publicIpAddress, files) {
                 port: '22'
             }).then(() => {
                 console.log("Connected to instance", publicIpAddress);
-                files.map(async (file) => {
-                    // Push to remote desktop
-                    await sftp.put(file, 'C:/Users/Administrator/Desktop/');
-                });
+                try {
+                    files.map(async (file) => {
+                        // Push to remote desktop
+                        if (file.filename && file.file) {
+                            await sftp.put(file.file, `C:/Users/Administrator/Desktop/${file.filename}`);
+                        }
+                    });
+                    resolve();
+                } catch (ex) {
+                    console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
+                }
 
-                resolve();
             }).catch((err) => {
-                console.log(err, 'catch error');
+                console.log("ERROR PUSHING FILES TO INSTANCE", err);
                 reject(err);
             });
         } catch (ex) {
