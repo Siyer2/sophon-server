@@ -201,8 +201,25 @@ router.get('/submit', async function (request, response) {
     try {
         const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
         await getStudentSubmission('54.252.243.233', directory);
-        // console.log(fs.existsSync(`./${directory}`));
+
         return response.send("success");
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+//== Test endpoint ==//
+// This endpoint tests when a lecturer uploads a question for students. 
+router.get('/upload', async function(request, response) {
+    try {
+        // NOTE: in prod, this will get called when a student runs an exam
+        // So this endpoint will wait for an instance to be running at this point
+
+
+        // Get the files from S3
+
+
+        // Upload it on to the running instance
     } catch (error) {
         return response.status(500).json({ error });
     }
