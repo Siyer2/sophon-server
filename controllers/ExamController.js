@@ -2,30 +2,38 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
+var multiparty = require('multiparty');
+var fs = require('fs');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const config = require('../config');
 
-// Lecturer creates exam; params: (numberOfStudents, [applications], startMessage)
+// Lecturer creates exam; params: examName, file, application
 router.post('/create', async function(request, response) {
-    const examName = request.body.examName;
-    const applications = request.body.applications;
-    const startMessage = request.body.startMessage;
     const administratorId = "SYAM-ADMIN"; // change to request.user._id in prod
 
     try {
+        // Parse the request
+        const parsedFormData = await parseFormData(request);
+        const filePath = parsedFormData.files.file[0].path;
+        const fileName = parsedFormData.files.file[0].originalFilename;
+        const file = fs.createReadStream(filePath);
+
         // Create an exam code
         const examCode = await createUniqueExamCode(request.db);
+
+        // Upload files to S3
+        const questionLocation = await uploadToS3(file, `${administratorId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
             administratorId: administratorId,
-            examName,
+            examName: parsedFormData.fields.examName[0],
             examCode,
-            applications: applications,
-            startMessage
+            application: parsedFormData.fields.application[0], 
+            questionLocation: questionLocation
         });
 
         // Return the exam code
@@ -207,7 +215,7 @@ router.get('/submit', async function (request, response) {
     }
 });
 
-//== Test endpoint ==//
+//== Test endpoints ==//
 // This endpoint tests when a lecturer uploads a question for students. 
 router.post('/upload', async function(request, response) {
     const lecturerId = request.body.lecturerId;
@@ -270,19 +278,41 @@ router.post('/upload', async function(request, response) {
         return response.status(500).json({ error });
     }
 });
+//== End Test Enpoint ==//
 
-function uploadToS3(file, filepath) {
+//== Helper Functions ==//
+function parseFormData(request) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var form = new multiparty.Form();
+            form.parse(request, function (err, fields, files) {
+                if (err) {
+                    console.log("MULTIPARTY ERROR PARSING FORM", err);
+                    reject(err);
+                }
+                else {
+                    resolve({ fields, files });
+                }
+            });
+        } catch (error) {
+            console.log("ERROR PARSING FORM", error);
+            reject(error);
+        }
+    });
+}
+
+function uploadToS3(file, filepath, bucket) {
     return new Promise(async (resolve, reject) => {
         try {
             var s3 = new AWS.S3({
                 apiVersion: '2006-03-01',
                 params: {
-                    Bucket: config.settings.SUBMISSION_BUCKET
+                    Bucket: bucket
                 }
             });
             
             const uploadParams = {
-                Bucket: config.settings.SUBMISSION_BUCKET,
+                Bucket: bucket,
                 Key: filepath,
                 Body: file
             }
@@ -355,7 +385,7 @@ function getStudentSubmission(publicIpAddress, directory) {
                         let file = `${directory}/${x.name}`;
 
                         // Save the submission in S3
-                        const savedLocation = await uploadToS3(stream, file);
+                        const savedLocation = await uploadToS3(stream, file, config.settings.SUBMISSION_BUCKET);
 
                         // TO-DO: Upload the saved location to mongo
                         console.log(savedLocation);
@@ -394,5 +424,7 @@ function createUniqueExamCode(db) {
         }
     });
 }
+
+//== End Helper Functions ==//
 
 module.exports = router;
