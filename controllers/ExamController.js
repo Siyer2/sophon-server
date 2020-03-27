@@ -13,7 +13,7 @@ const config = require('../config');
 
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', async function(request, response) {
-    const administratorId = "SYAM-ADMIN"; // change to request.user._id in prod
+    const lecturerId = "SYAM-ADMIN"; // change to request.user._id in prod
 
     try {
         // Parse the request
@@ -26,11 +26,11 @@ router.post('/create', async function(request, response) {
         const examCode = await createUniqueExamCode(request.db);
 
         // Upload files to S3
-        const questionLocation = await uploadToS3(file, `${administratorId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
+        const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
-            administratorId: administratorId,
+            lecturerId,
             examName: parsedFormData.fields.examName[0],
             examCode,
             application: parsedFormData.fields.application[0], 
@@ -199,7 +199,10 @@ router.post('/enter', async function (request, response) {
         const targetHost = runningEC2.PublicIpAddress;
 
         // Upload the lecturers files to the instance
-        updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
+        const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
+        if (uploadingProgress.status === 'error') {
+            return response.status(400).json({ error: uploadingProgress.error });
+        }
 
         // Store the student entrance in Mongo
 
@@ -222,7 +225,7 @@ async function updateInstanceWithLecturersQuestions(lecturerId, examCode, instan
         s3.listObjectsV2(listParams, async function (err, data) {
             if (err) {
                 console.log("AWS ERROR LISTING OBJECTSV2", err);
-                return { status: "error", message: 'Error listing objects', error: err }
+                return { status: "error", error: err }
             }
             else {
                 const promises = data.Contents.map((file) => {
