@@ -196,9 +196,10 @@ router.post('/enter', async function (request, response) {
         console.log("Finished running");
 
         // Get the public IP address
-        const target_host = runningEC2.PublicIpAddress;
+        const targetHost = runningEC2.PublicIpAddress;
 
         // Upload the lecturers files to the instance
+        updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
 
         // Store the student entrance in Mongo
 
@@ -208,32 +209,9 @@ router.post('/enter', async function (request, response) {
     }
 });
 
-router.get('/submit', async function (request, response) {
+// Push the lecturers question files to the running instance
+async function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
     try {
-        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
-        await getStudentSubmission('54.252.243.233', directory);
-
-        return response.send("success");
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-
-//== Test endpoints ==//
-// This endpoint tests when a student runs an exam: lecturer uploads a question for students. 
-router.post('/upload', async function(request, response) {
-    const lecturerId = request.body.lecturerId;
-    const examCode = request.body.examCode;
-
-    try {
-        // NOTE: in prod, this will get called when a student runs an exam
-        // So this endpoint will wait for an instance to be running at this point
-
-
-        
-
-        // Get the files in the location and store in an array of readable streams
-        // Initialise S3
         var s3 = new AWS.S3({
             apiVersion: '2006-03-01'
         });
@@ -243,7 +221,8 @@ router.post('/upload', async function(request, response) {
         }
         s3.listObjectsV2(listParams, async function (err, data) {
             if (err) {
-                return response.status(500).json({ message: 'Error listing objects', error: err });
+                console.log("AWS ERROR LISTING OBJECTSV2", err);
+                return { status: "error", message: 'Error listing objects', error: err }
             }
             else {
                 const promises = data.Contents.map((file) => {
@@ -273,11 +252,41 @@ router.post('/upload', async function(request, response) {
                 });
 
                 const files = await Promise.all(promises);
-                console.log(files.length);
-                await pushFilesToInstance('54.252.188.35', files);
-                return response.send("success");
+                await pushFilesToInstance(instanceId, files);
+                return { "status": "success" };
             }
         });
+    } catch (error) {
+        console.log("ERROR updateInstanceWithLecturersQuestions", error);
+        return { status: "error", error };
+    }
+}
+
+router.get('/submit', async function (request, response) {
+    try {
+        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
+        await getStudentSubmission('54.252.243.233', directory);
+
+        return response.send("success");
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+//== Test endpoints ==//
+// This endpoint tests when a student runs an exam: lecturer uploads a question for students. 
+router.post('/upload', async function(request, response) {
+    const lecturerId = request.body.lecturerId;
+    const examCode = request.body.examCode;
+
+    try {
+        // NOTE: in prod, this will get called when a student runs an exam
+        // So this endpoint will wait for an instance to be running at this point
+
+
+        
+
+        
     } catch (error) {
         return response.status(500).json({ error });
     }
