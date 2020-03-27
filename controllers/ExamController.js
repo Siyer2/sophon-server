@@ -76,6 +76,7 @@ router.post('/enter', async function (request, response) {
 
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+        console.log("Instance running...");
 
         // Get the public IP address
         const targetHost = runningEC2.PublicIpAddress;
@@ -85,6 +86,7 @@ router.post('/enter', async function (request, response) {
         if (uploadingProgress.status === 'error') {
             return response.status(400).json({ error: uploadingProgress.error });
         }
+        console.log("Finished pushing all files");
 
         // Store the student entrance in Mongo
         await request.db.collection("examEntrances").insertOne({
@@ -325,7 +327,8 @@ function pushFilesToInstance(publicIpAddress, files) {
                     files.map(async (file) => {
                         // Push to remote desktop
                         if (file.filename && file.file) {
-                            await sftp.put(file.file, `C:/Users/Administrator/Desktop/${file.filename}`);
+                            await sftp.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
+                            console.log(`Successfully pushed ${file.filename}`);
                         }
                     });
                     resolve();
@@ -354,11 +357,11 @@ function getStudentSubmission(publicIpAddress, directory) {
                 password: '%WuzAjXxMQeXpU.jK&;Z)6Bn8BSC8C6p',
                 port: '22'
             }).then(() => {
-                return sftp.list('C:/Users/Administrator/Desktop/submit');
+                return sftp.list('C:/Users/DefaultAccount/Desktop/submit');
             }).then((data) => {
                 len = data.length;
                 data.forEach(x => {
-                    let remoteFilePath = 'C:/Users/Administrator/Desktop/submit/' + x.name;
+                    let remoteFilePath = 'C:/Users/DefaultAccount/Desktop/submit/' + x.name;
                     sftp.get(remoteFilePath).then(async (stream) => {
                         let file = `${directory}/${x.name}`;
 
