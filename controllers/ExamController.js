@@ -210,56 +210,58 @@ router.get('/submit', async function (request, response) {
 
 //== Helper Functions ==//
 // Push the lecturers question files to the running instance
-async function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
-    try {
-        var s3 = new AWS.S3({
-            apiVersion: '2006-03-01'
-        });
-        var listParams = {
-            Bucket: config.settings.UPLOAD_BUCKET,
-            Prefix: `${lecturerId}/${examCode}/`
-        }
-        s3.listObjectsV2(listParams, async function (err, data) {
-            if (err) {
-                console.log("AWS ERROR LISTING OBJECTSV2", err);
-                return { status: "error", error: err }
+function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
+    return new Promise(async(resolve, reject) => {
+        try {
+            var s3 = new AWS.S3({
+                apiVersion: '2006-03-01'
+            });
+            var listParams = {
+                Bucket: config.settings.UPLOAD_BUCKET,
+                Prefix: `${lecturerId}/${examCode}/`
             }
-            else {
-                const promises = data.Contents.map((file) => {
-                    return new Promise(async (resolve, reject) => {
-                        try {
-                            // Get the object
-                            s3.getObject({
-                                Bucket: config.settings.UPLOAD_BUCKET,
-                                Key: file.Key
-                            }, function (err, data) {
-                                if (err) {
-                                    console.log("AWS ERROR GETTING OBJECT", err);
-                                    reject(err);
-                                }
-                                else {
-                                    // Add to the files array
-                                    if (data.Body) {
-                                        console.log(file.Key);
-                                        resolve({ file: data.Body, filename: file.Key.substring(file.Key.lastIndexOf("/") + 1) });
+            s3.listObjectsV2(listParams, async function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR LISTING OBJECTSV2", err);
+                    resolve({ status: "error", error: err });
+                }
+                else {
+                    const promises = data.Contents.map((file) => {
+                        return new Promise(async (resolve, reject) => {
+                            try {
+                                // Get the object
+                                s3.getObject({
+                                    Bucket: config.settings.UPLOAD_BUCKET,
+                                    Key: file.Key
+                                }, function (err, data) {
+                                    if (err) {
+                                        console.log("AWS ERROR GETTING OBJECT", err);
+                                        reject(err);
                                     }
-                                }
-                            });
-                        } catch (ex) {
-                            reject("EXCEPTION GETTING OBJECT", ex);
-                        }
+                                    else {
+                                        // Add to the files array
+                                        if (data.Body) {
+                                            console.log(file.Key);
+                                            resolve({ file: data.Body, filename: file.Key.substring(file.Key.lastIndexOf("/") + 1) });
+                                        }
+                                    }
+                                });
+                            } catch (ex) {
+                                reject("EXCEPTION GETTING OBJECT", ex);
+                            }
+                        });
                     });
-                });
-
-                const files = await Promise.all(promises);
-                await pushFilesToInstance(instanceId, files);
-                return { "status": "success" };
-            }
-        });
-    } catch (error) {
-        console.log("ERROR updateInstanceWithLecturersQuestions", error);
-        return { status: "error", error };
-    }
+    
+                    const files = await Promise.all(promises);
+                    await pushFilesToInstance(instanceId, files);
+                    resolve({ "status": "success" });
+                }
+            });
+        } catch (error) {
+            console.log("ERROR updateInstanceWithLecturersQuestions", error);
+            reject({ status: "error", error })
+        }
+    })
 }
 function parseFormData(request) {
     return new Promise(async (resolve, reject) => {
