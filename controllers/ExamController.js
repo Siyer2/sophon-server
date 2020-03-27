@@ -338,8 +338,6 @@ function pushFilesToInstance(publicIpAddress, files) {
                     console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
                 }
 
-            }).then(() => {
-                return sftp.end();
             }).catch((err) => {
                 console.log("ERROR PUSHING FILES TO INSTANCE", err);
                 reject(err);
