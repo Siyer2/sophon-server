@@ -46,6 +46,60 @@ router.post('/create', async function(request, response) {
     }
 });
 
+router.post('/enter', async function (request, response) {
+    try {
+        const examCode = request.body.examCode;
+        const studentId = request.body.studentId;
+
+        // Get the exam (including applications and startup message)
+        const exam = await request.db.collection("exams").findOne({ examCode: examCode });
+        if (!exam) {
+            return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
+        }
+
+        // Get the right AMI for the application
+        const AMI = (await request.db.collection("applications").findOne({ _id: ObjectId(exam.application) })).AMIId;
+
+        // Start a new EC2 and return it's IP address
+        const tags = [
+            {
+                Key: "ExamCode",
+                Value: examCode
+            },
+            {
+                Key: "StudentId",
+                Value: studentId
+            }
+        ];
+        const createEC2 = await EC2.createEC2s(1, tags, AMI);
+        const instanceId = createEC2.Instances[0].InstanceId;
+
+        // Wait till running
+        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+
+        // Get the public IP address
+        const targetHost = runningEC2.PublicIpAddress;
+
+        // Upload the lecturers files to the instance
+        const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
+        if (uploadingProgress.status === 'error') {
+            return response.status(400).json({ error: uploadingProgress.error });
+        }
+
+        // Store the student entrance in Mongo
+        await request.db.collection("examEntrances").insertOne({
+            studentId,
+            examCode,
+            startTime: moment().utc().format()
+        });
+
+        return response.json({ status: 'ready' });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// TODO: Remove the following endpoint
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
@@ -139,83 +193,20 @@ router.ws('/enter', async function(client, request) {
     });
 });
 
-function waitForScriptsToLoad(instanceId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
-            const app = Consumer.create({
-                queueUrl: queueUrl,
-                handleMessage: async (message) => {
-                    if (message.Body.toString() === instanceId) {
-                        console.log("Finished loading scripts", message.Body);
-                        resolve(message);
-                    }
-                },
-                sqs: new AWS.SQS()
-            });
-
-            app.start();
-        } catch (ex) {
-            console.log("EXCEPTION waiting for scripts to load", ex);
-            reject(ex);
-        }
-    });
-}
-
-//==== Test functions ====//
-router.post('/enter', async function (request, response) {
+//== Test Endpoints ==//
+router.get('/submit', async function (request, response) {
     try {
-        const examCode = request.body.examCode;
-        const studentId = request.body.studentId;
+        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
+        await getStudentSubmission('54.252.243.233', directory);
 
-        // Get the exam (including applications and startup message)
-        const exam = await request.db.collection("exams").findOne({ examCode: examCode });
-        if (!exam) {
-            return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
-        }
-
-        // Get the right AMI for the application
-        const AMI = (await request.db.collection("applications").findOne({ _id: ObjectId(exam.application) })).AMIId;
-
-        // Start a new EC2 and return it's IP address
-        const tags = [
-            {
-                Key: "ExamCode",
-                Value: examCode
-            },
-            {
-                Key: "StudentId",
-                Value: studentId
-            }
-        ];
-        const createEC2 = await EC2.createEC2s(1, tags, AMI);
-        const instanceId = createEC2.Instances[0].InstanceId;
-
-        // Wait till running
-        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-
-        // Get the public IP address
-        const targetHost = runningEC2.PublicIpAddress;
-
-        // Upload the lecturers files to the instance
-        const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
-        if (uploadingProgress.status === 'error') {
-            return response.status(400).json({ error: uploadingProgress.error });
-        }
-
-        // Store the student entrance in Mongo
-        await request.db.collection("examEntrances").insertOne({
-            studentId, 
-            examCode,
-            startTime: moment().utc().format()
-        });
-
-        return response.json({ status: 'ready' });
+        return response.send("success");
     } catch (error) {
         return response.status(500).json({ error });
     }
 });
+//== End Test Endpoints ==//
 
+//== Helper Functions ==//
 // Push the lecturers question files to the running instance
 async function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
     try {
@@ -268,39 +259,6 @@ async function updateInstanceWithLecturersQuestions(lecturerId, examCode, instan
         return { status: "error", error };
     }
 }
-
-router.get('/submit', async function (request, response) {
-    try {
-        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
-        await getStudentSubmission('54.252.243.233', directory);
-
-        return response.send("success");
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-
-//== Test endpoints ==//
-// This endpoint tests when a student runs an exam: lecturer uploads a question for students. 
-router.post('/upload', async function(request, response) {
-    const lecturerId = request.body.lecturerId;
-    const examCode = request.body.examCode;
-
-    try {
-        // NOTE: in prod, this will get called when a student runs an exam
-        // So this endpoint will wait for an instance to be running at this point
-
-
-        
-
-        
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-//== End Test Enpoint ==//
-
-//== Helper Functions ==//
 function parseFormData(request) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -445,6 +403,28 @@ function createUniqueExamCode(db) {
     });
 }
 
+function waitForScriptsToLoad(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
+            const app = Consumer.create({
+                queueUrl: queueUrl,
+                handleMessage: async (message) => {
+                    if (message.Body.toString() === instanceId) {
+                        console.log("Finished loading scripts", message.Body);
+                        resolve(message);
+                    }
+                },
+                sqs: new AWS.SQS()
+            });
+
+            app.start();
+        } catch (ex) {
+            console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
+    });
+}
 //== End Helper Functions ==//
 
 module.exports = router;
