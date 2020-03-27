@@ -1,5 +1,5 @@
-# OS-VNC
-Custom VNC built to be integrated converted to an Electron app
+# sophon-server
+
 
 # Contact
 iyersyam@gmail.com
