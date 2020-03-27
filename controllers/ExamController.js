@@ -4,6 +4,7 @@ var net = require('net');
 var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
 var fs = require('fs');
+var moment = require('moment');
 var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
@@ -34,7 +35,8 @@ router.post('/create', async function(request, response) {
             examName: parsedFormData.fields.examName[0],
             examCode,
             application: parsedFormData.fields.application[0], 
-            questionLocation: questionLocation
+            questionLocation: questionLocation, 
+            time: moment().utc().format()
         });
 
         // Return the exam code
@@ -175,6 +177,7 @@ router.post('/enter', async function (request, response) {
         // Get the right AMI for the application
         const AMI = (await request.db.collection("applications").findOne({ _id: ObjectId(exam.application) })).AMIId;
 
+        // Start a new EC2 and return it's IP address
         const tags = [
             {
                 Key: "ExamCode",
@@ -185,15 +188,11 @@ router.post('/enter', async function (request, response) {
                 Value: studentId
             }
         ];
-
-        // Start a new EC2 and return it's IP address
         const createEC2 = await EC2.createEC2s(1, tags, AMI);
-        console.log("Successfully created EC2");
         const instanceId = createEC2.Instances[0].InstanceId;
 
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-        console.log("Finished running");
 
         // Get the public IP address
         const targetHost = runningEC2.PublicIpAddress;
@@ -205,6 +204,11 @@ router.post('/enter', async function (request, response) {
         }
 
         // Store the student entrance in Mongo
+        await request.db.collection("examEntrances").insertOne({
+            studentId, 
+            examCode,
+            startTime: moment().utc().format()
+        });
 
         return response.json({ status: 'ready' });
     } catch (error) {
