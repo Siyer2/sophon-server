@@ -5,7 +5,7 @@ const dbHelper = require('../services/database');
 ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, exam, tags, AMIId) {
+    createEC2s: function (numberOfEc2s, tags, AMIId) {
         return new Promise(async (resolve, reject) => {
             try {
                 var params = {
@@ -14,6 +14,7 @@ module.exports = {
                     LaunchTemplate: {
                         LaunchTemplateName: 'default'
                     },
+                    ImageId: AMIId,
                     TagSpecifications: [
                         {
                             ResourceType: "instance",

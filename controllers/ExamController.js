@@ -4,6 +4,7 @@ var net = require('net');
 var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
 var fs = require('fs');
+var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 AWS.config.loadFromPath('./awsKeys.json');
@@ -171,6 +172,9 @@ router.post('/enter', async function (request, response) {
             return response.status(400).json({ error: `Couldn't find exam with code ${examCode}` });
         }
 
+        // Get the right AMI for the application
+        const AMI = (await request.db.collection("applications").findOne({ _id: ObjectId(exam.application) })).AMIId;
+
         const tags = [
             {
                 Key: "ExamCode",
@@ -183,7 +187,7 @@ router.post('/enter', async function (request, response) {
         ];
 
         // Start a new EC2 and return it's IP address
-        const createEC2 = await EC2.createEC2s(1, exam, tags);
+        const createEC2 = await EC2.createEC2s(1, tags, AMI);
         console.log("Successfully created EC2");
         const instanceId = createEC2.Instances[0].InstanceId;
 
@@ -194,9 +198,9 @@ router.post('/enter', async function (request, response) {
         // Get the public IP address
         const target_host = runningEC2.PublicIpAddress;
 
-        // Wait for the scripts to install
-        await waitForScriptsToLoad(instanceId);
-        console.log("Finished waiting");
+        // Upload the lecturers files to the instance
+
+        // Store the student entrance in Mongo
 
         return response.json({ status: 'ready' });
     } catch (error) {
