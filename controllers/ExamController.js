@@ -216,7 +216,7 @@ router.get('/submit', async function (request, response) {
 });
 
 //== Test endpoints ==//
-// This endpoint tests when a lecturer uploads a question for students. 
+// This endpoint tests when a student runs an exam: lecturer uploads a question for students. 
 router.post('/upload', async function(request, response) {
     const lecturerId = request.body.lecturerId;
     const examCode = request.body.examCode;

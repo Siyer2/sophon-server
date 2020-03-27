@@ -5,23 +5,21 @@ const dbHelper = require('../services/database');
 ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, exam, tags) {
+    createEC2s: function (numberOfEc2s, exam, tags, AMIId) {
         return new Promise(async (resolve, reject) => {
             try {
-                const script = await getScript(exam);
                 var params = {
                     MaxCount: numberOfEc2s,
                     MinCount: numberOfEc2s,
                     LaunchTemplate: {
-                        LaunchTemplateName: 'gnomeBaseOS'
+                        LaunchTemplateName: 'default'
                     },
                     TagSpecifications: [
                         {
                             ResourceType: "instance",
                             Tags: tags
                         }
-                    ], 
-                    UserData: Buffer.from(script).toString('base64')
+                    ]
                 }
 
                 ec2.runInstances(params, function (err, data) {
@@ -127,55 +125,3 @@ module.exports = {
         });
     }
 };
-
-function getScript(exam) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const applicationIds = exam.applications.map((applicationId) => {
-                return ObjectId(applicationId);
-            });
-
-            // Get all commands
-            const db = await new dbHelper();
-            const commands = await db.collection('applications').aggregate([
-                {
-                    '$match': {
-                        '_id': {
-                            '$in': applicationIds
-                        }
-                    }
-                }, {
-                    '$project': {
-                        'command': 1
-                    }
-                }
-            ]).toArray();
-
-            // Convert from array to string
-            var applicationCommand = '';
-            commands.map((application) => {
-                applicationCommand += `${application.command};`;
-            });
-
-            const script = `#!/bin/bash
-yes | sudo apt-get update
-yes | sudo apt-get upgrade
-
-yes | sudo apt-get install gedit
-echo ${exam.startMessage} >/home/ubuntu/Desktop/${exam.examName.replace(/ /g, "_")}.txt
-
-${applicationCommand}
-AWS_DEFAULT_REGION=ap-southeast-2
-EC2_INSTANCE_ID=$(ec2metadata --instance-id)
-AWS_DEFAULT_REGION=ap-southeast-2 AWS_ACCESS_KEY_ID=AKIASFXOVVEBZ5KOOXXF AWS_SECRET_ACCESS_KEY=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 aws sqs send-message --queue-url https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates --message-body "$EC2_INSTANCE_ID"
-
-sudo rm /etc/sudoers.d/90-cloud-init-users
-
-    `;
-            resolve(script);
-        } catch (ex) {
-            console.log("EXCEPTION GETTING SCRIPT", ex);
-            reject(ex);
-        }
-    });
-}
