@@ -19,7 +19,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insert({
-            administratorId: request.user._id,
+            lecturerId: request.user._id,
             examName, 
             examCode, 
             applications: applications, 
@@ -58,10 +58,10 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
     return response.send(createEC2);
 });
 
-// Lists administrator's exams
+// Lists lecturer's exams
 router.get('/list', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
-        const exams = await request.db.collection("exams").find({ administratorId: String(request.user._id) }).toArray();
+        const exams = await request.db.collection("exams").find({ lecturerId: String(request.user._id) }).toArray();
 
         return response.json({ exams });
     } catch (error) {
