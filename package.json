@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.610.0",
+    "bcrypt": "^3.0.8",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
@@ -23,7 +24,6 @@
     "moment": "^2.24.0",
     "mongodb": "^3.5.3",
     "multiparty": "^4.2.1",
-    "net": "^1.0.2",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",

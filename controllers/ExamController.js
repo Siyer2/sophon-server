@@ -8,6 +8,9 @@ var moment = require('moment');
 var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
+var passport = require('passport');
+var { ObjectId } = require('mongodb');
+require('../services/passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const config = require('../config');
@@ -105,6 +108,7 @@ router.post('/enter', async function (request, response) {
 router.ws('/enter', async function(client, request) {
     const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
     const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
+    const userId = request.user._id;
 
     // Get the exam (including applications and startup message)
     const exam = await request.db.collection("exams").findOne({ examCode: examCode });
