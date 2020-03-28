@@ -3,6 +3,7 @@ var EC2 = require('../services/EC2');
 var net = require('net');
 var AWS = require('aws-sdk');
 var passport = require('passport');
+var { ObjectId } = require('mongodb');
 require('../services/passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
@@ -64,6 +65,18 @@ router.get('/list', passport.authenticate('jwt', { session: false }), async func
         const exams = await request.db.collection("exams").find({ lecturerId: String(request.user._id) }).toArray();
 
         return response.json({ exams });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// List students in an exam
+router.post('/studentlist', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const examId = request.body.examId;
+        const students = await request.db.collection("exams").find({ _id: ObjectId(examId) }).toArray();
+
+        return response.json({ students });
     } catch (error) {
         return response.status(500).json({ error });
     }
