@@ -120,7 +120,7 @@ router.get('/list', passport.authenticate('jwt', { session: false }), async func
 router.post('/studentlist', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
         const examId = request.body.examId;
-        const students = await request.db.collection("examEntrances").find({ _id: ObjectId(examId) }).toArray();
+        const students = await request.db.collection("examEntrances").find({ examId: String(examId) }).toArray();
 
         return response.json({ students });
     } catch (error) {
