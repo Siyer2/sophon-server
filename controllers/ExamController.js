@@ -16,7 +16,7 @@ const { Consumer } = require('sqs-consumer');
 const config = require('../config');
 
 // Lecturer creates exam; params: examName, file, application
-router.post('/create', async function(request, response) {
+router.post('/create', passport.authenticate('jwt', { session: false }), async function (request, response) {
     const lecturerId = "SYAM-ADMIN"; // change to request.user._id in prod
 
     try {
@@ -49,7 +49,7 @@ router.post('/create', async function(request, response) {
     }
 });
 
-router.post('/enter', async function (request, response) {
+router.post('/enter', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
         const examCode = request.body.examCode;
         const studentId = request.body.studentId;
@@ -93,12 +93,36 @@ router.post('/enter', async function (request, response) {
 
         // Store the student entrance in Mongo
         await request.db.collection("examEntrances").insertOne({
+            examId: String(exam._id),
             studentId,
             examCode,
             startTime: moment().utc().format()
         });
 
         return response.json({ status: 'ready' });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// Lists lecturer's exams
+router.get('/list', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const exams = await request.db.collection("exams").find({ lecturerId: String(request.user._id) }).toArray();
+
+        return response.json({ exams });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// List students in an exam
+router.post('/studentlist', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const examId = request.body.examId;
+        const students = await request.db.collection("examEntrances").find({ _id: ObjectId(examId) }).toArray();
+
+        return response.json({ students });
     } catch (error) {
         return response.status(500).json({ error });
     }
