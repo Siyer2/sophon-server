@@ -49,6 +49,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
     }
 });
 
+// Student enters exam
 router.post('/enter', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
         const examCode = request.body.examCode;
@@ -123,6 +124,33 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
         const students = await request.db.collection("examEntrances").find({ examId: String(examId) }).toArray();
 
         return response.json({ students });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// Lecturer closes or opens an exam
+router.post('/toggleClose', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const examId = request.body.examId;
+        const exam = await request.db.collection("exams").findOne({ _id: ObjectId(examId) });
+        const isClosed = exam.isClosed ? exam.isClosed : false;
+
+        await request.db.collection("exams").updateOne(
+            { _id: ObjectId(examId) }, 
+            { $set: { isClosed: !isClosed }}
+        );
+
+        return response.json({ status: `${!isClosed === true ? "Closed" : "Opened"} exam with ID ${examId}` });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
+// Lecturer deletes an exam
+router.post('/delete', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        
     } catch (error) {
         return response.status(500).json({ error });
     }
