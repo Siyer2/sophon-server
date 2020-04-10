@@ -35,8 +35,8 @@ router.post('/login', async function (request, response) {
     try {
         passport.authenticate('local', { session: false }, (err, user, info) => {
             if (err || !user) {
-                return response.status(400).json({
-                    message: info.message ? info.message : 'Something is not right',
+                return response.json({
+                    error: info.message ? info.message : 'Something is not right',
                     user: user
                 });
             }
