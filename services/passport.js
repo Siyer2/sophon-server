@@ -3,6 +3,8 @@ const LocalStrategy = require('passport-local');
 const passportJWT = require('passport-jwt');
 const JWTStrategy = passportJWT.Strategy;
 const ExtractJWT = passportJWT.ExtractJwt;
+const dbHelper = require('../services/database');
+const { hashPassword, comparePasswords } = require('../services/helperFunctions');
 
 // DUMMY DATA
 const user = {
@@ -16,26 +18,22 @@ passport.use(new LocalStrategy({
     usernameField: 'email',
     passwordField: 'password'
 },
-    function (email, password, cb) {
-        // TODO: Insert DB call here to determine if user has the right password
+async function (email, password, cb) {
+    const db = await new dbHelper();
+    const user = await db.collection("users").findOne({ email });
+    const correctPassword = user && ((await comparePasswords(password, user.password)) === 'success' ? true : false);
 
-        //this one is typically a DB call. Assume that the returned user object is pre-formatted and ready for storing in JWT
-        // return UserModel.findOne({ email, password })
-        //     .then(user => {
-        //         if (!user) {
-        //             return cb(null, false, { message: 'Incorrect email or password.' });
-        //         }
-        //         return cb(null, user, { message: 'Logged In Successfully' });
-        //     })
-        //     .catch(err => cb(err));
-        
+    if (correctPassword) {
         return cb(null, user, { message: 'Logged In Successfully' });
     }
-));
+    else {
+        return cb(null, false, { message: 'Incorrect email or password.' });
+    }    
+}));
 
 passport.use(new JWTStrategy({
     jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-    secretOrKey: 'your_jwt_secret'
+    secretOrKey: 'yEdKYsvHgGA3'
 },
     function (jwtPayload, cb) {
         // TODO: Insert DB call here to determine if user has the right password

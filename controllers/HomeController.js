@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const passport = require('passport');
 require('../services/passport');
 const dbHelper = require('../services/database');
-const bcrypt = require('bcrypt');
+const { hashPassword } = require('../services/helperFunctions');
 
 // Additional libraries
 var moment = require('moment');
@@ -36,7 +36,7 @@ router.post('/login', async function (request, response) {
         passport.authenticate('local', { session: false }, (err, user, info) => {
             if (err || !user) {
                 return response.status(400).json({
-                    message: 'Something is not right',
+                    message: info.message ? info.message : 'Something is not right',
                     user: user
                 });
             }
@@ -45,7 +45,7 @@ router.post('/login', async function (request, response) {
                     response.send(err);
                 }
                 // generate a signed son web token with the contents of user object and return it in the response
-                const token = jwt.sign(user, 'your_jwt_secret');
+                const token = jwt.sign(user, 'yEdKYsvHgGA3');
                 return response.json({ user, token });
             });
         })(request, response);
@@ -83,7 +83,7 @@ router.post('/signup', async function (request, response) {
                     response.send(err);
                 }
                 // generate a signed son web token with the contents of user object and return it in the response
-                const token = jwt.sign(user, 'your_jwt_secret');
+                const token = jwt.sign(user, 'yEdKYsvHgGA3');
                 return response.json({ user, token });
             });
         })(request, response);
@@ -91,26 +91,5 @@ router.post('/signup', async function (request, response) {
         return response.status(500).json({ error });
     }
 });
-
-function hashPassword(plaintextPassword) {
-    return new Promise((resolve, reject) => {
-        try {
-            const saltRounds = 10;
-    
-            bcrypt.hash(plaintextPassword, saltRounds, function (err, hash) {
-                if (err) {
-                    console.log("BCRYPT EXCEPTION HASHING PASSWORD", err);
-                    reject(err);
-                }
-                
-                resolve(hash);
-            });
-    
-        } catch (ex) {
-            console.log("EXCEPTION HASHING PASSWORD", ex);
-            reject(ex);
-        }
-    });
-}
 
 module.exports = router;
