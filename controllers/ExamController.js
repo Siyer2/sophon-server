@@ -17,7 +17,7 @@ const config = require('../config');
 
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', passport.authenticate('jwt', { session: false }), async function (request, response) {
-    const lecturerId = "SYAM-ADMIN"; // change to request.user._id in prod
+    const lecturerId = request.user._id;
 
     try {
         // Parse the request
