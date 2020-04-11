@@ -32,7 +32,7 @@ router.get('/auth', passport.authenticate('jwt', { session: false }), function (
             return response.json({ user: request.user });
         }
         else {
-            return response.json({ user: null });
+            return response.status(400).json({ user: null });
         }
     } catch (error) {
         return response.status(500).json({ error });
