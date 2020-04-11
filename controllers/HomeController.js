@@ -25,12 +25,20 @@ router.get('/', async function (request, response) {
     response.send('API is working || Version 19:36');
 });
 
-router.post('/auth', passport.authenticate('jwt', { session: false }), function (request, response) {
-        response.send(request.user);
-    }
-);
-
 //==== Authentication ====//
+router.get('/auth', passport.authenticate('jwt', { session: false }), function (request, response) {
+    try {
+        if (request.user) {
+            return response.json({ user: request.user });
+        }
+        else {
+            return response.json({ user: null });
+        }
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 router.post('/login', async function (request, response) {
     try {
         passport.authenticate('local', { session: false }, (err, user, info) => {
@@ -59,7 +67,7 @@ router.post('/signup', async function (request, response) {
         // Validate that the user doesn't already exist
         const userExists = await request.db.collection("users").findOne({ email: request.body.email });
         if (userExists) {
-            return response.status(400).json({ error: `User with ${request.body.email} already exists `});
+            return response.status(400).json({ error: `User with ${request.body.email} already exists ` });
         }
 
         // Hash the password
