@@ -10,7 +10,6 @@ var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 var passport = require('passport');
 var { ObjectId } = require('mongodb');
-require('../services/passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const config = require('../config');

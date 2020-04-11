@@ -19,10 +19,12 @@ app.use(cors(corsOptions));
 // Controllers
 var HomeController = require('./controllers/HomeController');
 var ExamController = require('./controllers/ExamController');
+var AuthController = require('./controllers/AuthController');
 
 // Routes
 app.use('/', HomeController);
 app.use('/exam', ExamController);
+app.use('/auth', AuthController);
 
 // Start the server
 app.listen(port, function (err) {
