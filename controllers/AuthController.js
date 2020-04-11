@@ -33,24 +33,28 @@ var app = express();
 app.use(passport.initialize());
 
 router.post("/login", async function (request, response) {
-    if (request.body.email && request.body.password) {
-        var email = request.body.email;
-        var password = request.body.password;
-    }
-
-    const user = await request.db.collection("users").findOne({ email });
-    if (!user) {
-        return response.status(401).json({ message: "Email Not Found" });
-    }
-
-    const correctPassword = user && ((await comparePasswords(password, user.password)) === 'success' ? true : false);
-    if (correctPassword) {
-        var payload = { _id: user._id };
-        var token = jwt.sign(payload, jwtOptions.secretOrKey);
-        return response.json({ message: "Logged In Successfully", user, token: token });
-    }
-    else {
-        return response.status(401).json({ message: "Incorrect email or password." });
+    try {
+        if (request.body.email && request.body.password) {
+            var email = request.body.email;
+            var password = request.body.password;
+        }
+    
+        const user = await request.db.collection("users").findOne({ email });
+        if (!user) {
+            return response.json({ error: "Email Not Found" });
+        }
+    
+        const correctPassword = user && ((await comparePasswords(password, user.password)) === 'success' ? true : false);
+        if (correctPassword) {
+            var payload = { _id: user._id };
+            var token = jwt.sign(payload, jwtOptions.secretOrKey);
+            return response.json({ message: "Logged In Successfully", user, token: token });
+        }
+        else {
+            return response.json({ error: "Incorrect password." });
+        }
+    } catch (error) {
+        return response.status(500).json({ error });
     }
 });
 
