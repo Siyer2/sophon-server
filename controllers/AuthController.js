@@ -1,18 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-
 const passport = require("passport");
 const passportJWT = require("passport-jwt");
-
 const ExtractJwt = passportJWT.ExtractJwt;
 const JwtStrategy = passportJWT.Strategy;
-
 const dbHelper = require('../services/database');
 const { comparePasswords } = require('../services/helperFunctions');
-
 const { ObjectId } = require('mongodb');
-
 var jwtOptions = {}
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
 jwtOptions.secretOrKey = 'yEdKYsvHgGA3';
