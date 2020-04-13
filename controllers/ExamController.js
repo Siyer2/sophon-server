@@ -128,6 +128,23 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
     }
 });
 
+// List available applications
+router.get('/applications', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const applications = await request.db.collection("applications").aggregate([
+            {
+                '$project': {
+                    'AMIId': 0
+                }
+            }
+        ]).toArray();
+
+        return response.json({ applications });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 // Lecturer closes or opens an exam
 router.post('/toggleClose', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
