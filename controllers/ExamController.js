@@ -108,7 +108,7 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
 // Lists lecturer's exams
 router.get('/list', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
-        const exams = await request.db.collection("exams").find({ lecturerId: String(request.user._id) }).toArray();
+        const exams = await request.db.collection("exams").find({ lecturerId: ObjectId(request.user._id) }).toArray();
 
         return response.json({ exams });
     } catch (error) {
