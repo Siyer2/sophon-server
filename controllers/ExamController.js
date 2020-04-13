@@ -42,7 +42,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
         });
 
         // Return the exam code
-        return response.json({ message: exam.ops[0] });
+        return response.json({ exam: exam.ops[0] });
     } catch (error) {
         return response.status(500).json({ error });
     }
