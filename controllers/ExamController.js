@@ -36,7 +36,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
             lecturerId,
             examName: parsedFormData.fields.examName[0],
             examCode,
-            application: parsedFormData.fields.application[0], 
+            application: parsedFormData.fields.applicationId[0], 
             questionLocation: questionLocation, 
             time: moment().utc().format()
         });
