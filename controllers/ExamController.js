@@ -146,13 +146,14 @@ router.get('/download', async function (request, response) {
             const filename = path.basename(file.Key);
             return filename;
         });
-        console.log(filesArray);
 
-        // return response.send("s");
         response.set('content-type', 'application/zip');
+
         s3Zip
             .archive({ s3: s3, bucket: config.settings.SUBMISSION_BUCKET }, submissionLocation, filesArray)
             .pipe(response)
+
+        // return response.download(response);
 
     } catch (error) {
         console.log("error", error);
