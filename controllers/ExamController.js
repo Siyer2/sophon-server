@@ -131,8 +131,7 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
 });
 
 // Lecturer downloads students submission folder
-// router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
-router.get('/download', async function (request, response) {
+router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
         // const submissionLocation = request.body.submissionLocation;
         // const studentId = request.body.studentId;
