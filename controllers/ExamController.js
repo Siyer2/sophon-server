@@ -128,6 +128,18 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
     }
 });
 
+// Lecturer downloads students submission folder
+router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
+    try {
+        const examId = request.body.examId;
+        const students = await request.db.collection("examEntrances").find({ examId: String(examId) }).toArray();
+
+        return response.json({ students });
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 // List available applications
 router.get('/applications', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
@@ -442,7 +454,8 @@ function getStudentSubmission(publicIpAddress, directory) {
                         // Save the submission in S3
                         const savedLocation = await uploadToS3(stream, file, config.settings.SUBMISSION_BUCKET);
 
-                        // TO-DO: Upload the saved location to mongo
+                        // TO-DO: Upload the saved location to mongo, 
+                        // collection: examEntrances, field: submissionLocation
                         console.log(savedLocation);
                     });
                 });
