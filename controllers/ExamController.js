@@ -135,7 +135,9 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
 router.get('/download', async function (request, response) {
     try {
         // const submissionLocation = request.body.submissionLocation;
+        // const studentId = request.body.studentId;
         const submissionLocation = "z5113480_i09";
+        const studentId = "z5113480";
         const s3 = new AWS.S3();
 
         const s3Objects = await s3
@@ -148,12 +150,12 @@ router.get('/download', async function (request, response) {
         });
 
         response.set('content-type', 'application/zip');
+        response.header('Content-Disposition', `attachment; filename="${studentId}.zip"`);
 
         s3Zip
             .archive({ s3: s3, bucket: config.settings.SUBMISSION_BUCKET }, submissionLocation, filesArray)
             .pipe(response)
 
-        // return response.download(response);
 
     } catch (error) {
         console.log("error", error);
