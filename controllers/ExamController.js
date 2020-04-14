@@ -5,6 +5,8 @@ var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
 var fs = require('fs');
 var moment = require('moment');
+var s3Zip = require('s3-zip');
+var path = require('path');
 var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
@@ -129,13 +131,31 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
 });
 
 // Lecturer downloads students submission folder
-router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
+// router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
+router.get('/download', async function (request, response) {
     try {
-        const examId = request.body.examId;
-        const students = await request.db.collection("examEntrances").find({ examId: String(examId) }).toArray();
+        // const submissionLocation = request.body.submissionLocation;
+        const submissionLocation = "z5113480_i09";
+        const s3 = new AWS.S3();
 
-        return response.json({ students });
+        const s3Objects = await s3
+            .listObjectsV2({ Bucket: config.settings.SUBMISSION_BUCKET, Prefix: submissionLocation })
+            .promise();
+
+        const filesArray = s3Objects.Contents.map((file) => {
+            const filename = path.basename(file.Key);
+            return filename;
+        });
+        console.log(filesArray);
+
+        // return response.send("s");
+        response.set('content-type', 'application/zip');
+        s3Zip
+            .archive({ s3: s3, bucket: config.settings.SUBMISSION_BUCKET }, submissionLocation, filesArray)
+            .pipe(response)
+
     } catch (error) {
+        console.log("error", error);
         return response.status(500).json({ error });
     }
 });
