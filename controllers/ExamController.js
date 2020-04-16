@@ -200,7 +200,18 @@ router.post('/toggleClose', passport.authenticate('jwt', { session: false }), as
 // Lecturer deletes an exam
 router.post('/delete', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
+        const examCode = (await request.db.collection("exams").findOne({ _id: ObjectId(request.body.examId) })).examCode;
+
+        // Empty the lecturer's questions from S3
+        await emptyS3Directory(config.settings.UPLOAD_BUCKET, `${request.user._id.toString()}/${examCode}`);
         
+        // Empty the student's submissions from S3 
+        await emptyS3Directory(config.settings.SUBMISSION_BUCKET, `${request.user._id.toString()}/${examCode}`);
+
+        // Delete the exam
+        await request.db.collection("exams").deleteOne({ _id: ObjectId(request.body.examId) });
+
+        return response.send("success");
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -536,6 +547,31 @@ function waitForScriptsToLoad(instanceId) {
             reject(ex);
         }
     });
+}
+
+async function emptyS3Directory(bucket, dir) {
+    const listParams = {
+        Bucket: bucket,
+        Prefix: dir
+    };
+
+    const s3 = new AWS.S3();
+    const listedObjects = await s3.listObjectsV2(listParams).promise();
+
+    if (listedObjects.Contents.length === 0) return;
+
+    const deleteParams = {
+        Bucket: bucket,
+        Delete: { Objects: [] }
+    };
+
+    listedObjects.Contents.forEach(({ Key }) => {
+        deleteParams.Delete.Objects.push({ Key });
+    });
+
+    await s3.deleteObjects(deleteParams).promise();
+
+    if (listedObjects.IsTruncated) await emptyS3Directory(bucket, dir);
 }
 //== End Helper Functions ==//
 
