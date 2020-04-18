@@ -3,37 +3,49 @@
 module.exports = function (server) {
     var io = require('socket.io')(server);
     var rdp = require('node-rdpjs');
-
+    
+    var rdpClient = null;
+    
     io.on('connection', async function (client) {
-        console.log("a", client.handshake.query.studentId);
-        console.log("b", client.handshake.query.examCode);
-
-
-        var rdpClient = null;
         client.on('infos', function (infos) {
+            const domain = `ec2-${infos.ip.replace('.', '-')}.ap-southeast-2.compute.amazonaws.com`;
+            const connection = {
+                domain: domain, 
+                username: "DefaultAccount", 
+                password: "4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt", 
+                ip: infos.ip, 
+                port: "3389", 
+                screen: { width: 800, height: 600 }, 
+                locale: "en"
+            }
+
             if (rdpClient) {
                 // clean older connection
                 rdpClient.close();
             };
 
             rdpClient = rdp.createClient({
-                domain: infos.domain,
-                userName: infos.username,
-                password: infos.password,
+                domain: connection.domain,
+                userName: connection.username,
+                password: connection.password,
                 enablePerf: true,
                 autoLogin: true,
-                screen: infos.screen,
-                locale: infos.locale,
+                screen: connection.screen,
+                locale: connection.locale,
                 logLevel: process.argv[2] || 'INFO'
             }).on('connect', function () {
+                // Enter the exam
+                console.log("connected");
                 client.emit('rdp-connect');
             }).on('bitmap', function (bitmap) {
                 client.emit('rdp-bitmap', bitmap);
             }).on('close', function () {
+                // Submit the exam
+                
                 client.emit('rdp-close');
             }).on('error', function (err) {
                 client.emit('rdp-error', err);
-            }).connect(infos.ip, infos.port);
+            }).connect(connection.ip, connection.port);
         }).on('mouse', function (x, y, button, isPressed) {
             if (!rdpClient) return;
 
@@ -54,6 +66,7 @@ module.exports = function (server) {
         }).on('disconnect', function () {
             if (!rdpClient) return;
 
+            // Submit the exam
             rdpClient.close();
         });
     });
