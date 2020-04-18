@@ -20,6 +20,7 @@
     "express": "^4.17.1",
     "express-ws": "^4.0.0",
     "fs": "0.0.1-security",
+    "http": "0.0.1-security",
     "jsonwebtoken": "^8.5.1",
     "moment": "^2.24.0",
     "mongodb": "^3.5.3",
@@ -30,7 +31,9 @@
     "passport-local": "^1.0.0",
     "path": "^0.12.7",
     "s3-zip": "^3.1.3",
+    "socket.io": "^2.3.0",
     "sqs-consumer": "^5.4.0",
-    "ssh2-sftp-client": "^5.0.2"
+    "ssh2-sftp-client": "^5.0.2",
+    "node-rdpjs": "https://github.com/Siyer2/node-rdpjs.git"
   }
 }

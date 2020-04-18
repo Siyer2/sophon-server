@@ -2,7 +2,8 @@ require('dotenv').config();
 var express = require('express');
 var app = express();
 var cors = require('cors');
-require('express-ws')(app);
+require('express-ws')(app); // DELETE
+var server = require('http').Server(app);
 
 const port = process.env.PORT ? process.env.PORT : 5902;
 
@@ -27,10 +28,12 @@ app.use('/exam', ExamController);
 app.use('/auth', AuthController);
 
 // Start the server
-app.listen(port, function (err) {
+server.listen(port, function (err) {
     if (err) {
         throw err;
     }
 
     console.log(`API running on port ${port}...`);
 });
+
+require('./examSockets')(server);
