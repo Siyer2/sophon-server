@@ -51,7 +51,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
 });
 
 // Student enters exam
-router.post('/enter', passport.authenticate('jwt', { session: false }), async function (request, response) {
+router.post('/enter', async function (request, response) {
     try {
         const examCode = request.body.examCode;
         const studentId = request.body.studentId;
@@ -101,7 +101,7 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
             startTime: moment().utc().format()
         });
 
-        return response.json({ status: 'ready' });
+        return response.json({ targetHost });
     } catch (error) {
         return response.status(500).json({ error });
     }
