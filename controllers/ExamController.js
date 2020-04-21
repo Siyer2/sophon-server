@@ -51,7 +51,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
 });
 
 // Student enters exam
-router.post('/enter', passport.authenticate('jwt', { session: false }), async function (request, response) {
+router.post('/enter', async function (request, response) {
     try {
         const examCode = request.body.examCode;
         const studentId = request.body.studentId;
@@ -59,7 +59,7 @@ router.post('/enter', passport.authenticate('jwt', { session: false }), async fu
         // Get the exam (including applications and startup message)
         const exam = await request.db.collection("exams").findOne({ examCode: examCode, $or: [{ isClosed: false }, { isClosed: { $exists: false } }] });
         if (!exam) {
-            return response.status(400).json({ error: `Couldn't find an open exam with code ${examCode}` });
+            return response.status(200).json({ error: `Couldn't find an open exam with code ${examCode}` });
         }
 
         // Get the right AMI for the application
