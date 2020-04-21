@@ -439,7 +439,8 @@ function pushFilesToInstance(publicIpAddress, files) {
                 host: publicIpAddress,
                 username: 'Administrator',
                 password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
-                port: '22'
+                port: '22', 
+                tryKeyboard: true
             }).then(() => {
                 console.log("Connected to instance", publicIpAddress);
                 try {
