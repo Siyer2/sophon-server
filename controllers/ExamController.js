@@ -62,6 +62,12 @@ router.post('/enter', async function (request, response) {
             return response.status(200).json({ error: `Couldn't find an open exam with code ${examCode}` });
         }
 
+        // Check that there isn't another student with the same ID already in the exam
+        const alreadyEnteredExam = await request.db.collection("examEntrances").findOne({ examCode, studentId });
+        if (alreadyEnteredExam) {
+            return response.status(200).json({ error: `${studentId} has already entered this exam` });
+        }
+
         // Get the right AMI for the application
         const AMI = (await request.db.collection("applications").findOne({ _id: ObjectId(exam.application) })).AMIId;
 
