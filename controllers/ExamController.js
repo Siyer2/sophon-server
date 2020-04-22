@@ -438,6 +438,7 @@ function uploadToS3(file, filepath, bucket) {
 }
 
 // Upload the lecturer's questions to a running instance
+var activeSFTPConnection = false;
 function pushFilesToInstance(publicIpAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -449,6 +450,7 @@ function pushFilesToInstance(publicIpAddress, files) {
                 port: '22', 
                 tryKeyboard: true
             }).then(() => {
+                activeSFTPConnection = true;
                 console.log("Connected to instance", publicIpAddress);
                 try {
                     files.map(async (file) => {
@@ -458,6 +460,10 @@ function pushFilesToInstance(publicIpAddress, files) {
                             console.log(`Successfully pushed ${file.filename}`);
                         }
                     });
+                    activeSFTPConnection = false;
+                    if (!activeSFTPConnection) {
+                        sftp.end();
+                    }
                     resolve();
                 } catch (ex) {
                     console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
