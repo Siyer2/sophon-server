@@ -100,7 +100,7 @@ router.post('/enter', async function (request, response) {
         console.log("Finished pushing all files");
 
         // Store the student entrance in Mongo
-        await request.db.collection("examEntrances").insertOne({
+        const examEntrance = await request.db.collection("examEntrances").insertOne({
             ip: targetHost,
             examId: String(exam._id),
             studentId,
@@ -108,7 +108,7 @@ router.post('/enter', async function (request, response) {
             startTime: moment().utc().format()
         });
 
-        return response.json({ status: 'ready', ip: targetHost });
+        return response.json({ status: 'ready', examEntranceId: examEntrance.ops[0]._id.toString() });
     } catch (error) {
         return response.status(500).json({ error });
     }
