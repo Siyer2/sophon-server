@@ -104,7 +104,8 @@ router.post('/enter', async function (request, response) {
             examId: String(exam._id),
             studentId,
             examCode,
-            startTime: moment().utc().format()
+            startTime: moment().utc().format(),
+            instanceId
         });
 
         return response.json({ status: 'ready', examEntranceId: examEntrance.ops[0]._id.toString() });
@@ -460,6 +461,11 @@ function pushFilesToInstance(publicIpAddress, files) {
                     if (!activeSFTPConnection) {
                         sftp.end();
                     }
+
+                    sftp.on('error', error => {
+                        console.log(error);
+                    });
+
                     resolve();
                 } catch (ex) {
                     console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
@@ -495,12 +501,12 @@ function getStudentSubmission(publicIpAddress, directory) {
                         let file = `${directory}/${x.name}`;
 
                         // Save the submission in S3
-                        const savedLocation = await uploadToS3(stream, file, config.settings.SUBMISSION_BUCKET);
-
-                        // TO-DO: Upload the saved location to mongo, 
-                        // collection: examEntrances, field: submissionLocation
-                        console.log(savedLocation);
+                        await uploadToS3(stream, file, config.settings.SUBMISSION_BUCKET);
                     });
+                });
+
+                sftp.on('error', error => {
+                    console.log(error);
                 });
 
                 resolve();
