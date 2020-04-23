@@ -11,7 +11,6 @@ var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 var passport = require('passport');
-var { ObjectId } = require('mongodb');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const config = require('../config');
@@ -59,7 +58,13 @@ router.post('/enter', async function (request, response) {
         // Get the exam (including applications and startup message)
         const exam = await request.db.collection("exams").findOne({ examCode: examCode, $or: [{ isClosed: false }, { isClosed: { $exists: false } }] });
         if (!exam) {
-            return response.status(400).json({ error: `Couldn't find an open exam with code ${examCode}` });
+            return response.status(200).json({ error: `Couldn't find an open exam with code ${examCode}` });
+        }
+
+        // Check that there isn't another student with the same ID already in the exam
+        const alreadyEnteredExam = await request.db.collection("examEntrances").findOne({ examCode, studentId });
+        if (alreadyEnteredExam) {
+            return response.status(200).json({ error: `${studentId} has already entered this exam` });
         }
 
         // Get the right AMI for the application
@@ -94,14 +99,15 @@ router.post('/enter', async function (request, response) {
         console.log("Finished pushing all files");
 
         // Store the student entrance in Mongo
-        await request.db.collection("examEntrances").insertOne({
+        const examEntrance = await request.db.collection("examEntrances").insertOne({
+            ip: targetHost,
             examId: String(exam._id),
             studentId,
             examCode,
             startTime: moment().utc().format()
         });
 
-        return response.json({ targetHost });
+        return response.json({ status: 'ready', examEntranceId: examEntrance.ops[0]._id.toString() });
     } catch (error) {
         return response.status(500).json({ error });
     }
@@ -133,10 +139,7 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
 // Lecturer downloads students submission folder
 router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
-        // const submissionLocation = request.body.submissionLocation;
-        // const studentId = request.body.studentId;
-        const submissionLocation = "z5113480_i09";
-        const studentId = "z5113480";
+        const submissionLocation = request.body.submissionLocation;
         const s3 = new AWS.S3();
 
         const s3Objects = await s3
@@ -149,7 +152,7 @@ router.post('/download', passport.authenticate('jwt', { session: false }), async
         });
 
         response.set('content-type', 'application/zip');
-        response.header('Content-Disposition', `attachment; filename="${studentId}.zip"`);
+        response.header('Content-Disposition', `attachment; filename="student.zip"`);
 
         s3Zip
             .archive({ s3: s3, bucket: config.settings.SUBMISSION_BUCKET }, submissionLocation, filesArray)
@@ -431,6 +434,7 @@ function uploadToS3(file, filepath, bucket) {
 }
 
 // Upload the lecturer's questions to a running instance
+var activeSFTPConnection = false;
 function pushFilesToInstance(publicIpAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -439,8 +443,10 @@ function pushFilesToInstance(publicIpAddress, files) {
                 host: publicIpAddress,
                 username: 'Administrator',
                 password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
-                port: '22'
+                port: '22', 
+                tryKeyboard: true
             }).then(() => {
+                activeSFTPConnection = true;
                 console.log("Connected to instance", publicIpAddress);
                 try {
                     files.map(async (file) => {
@@ -450,6 +456,10 @@ function pushFilesToInstance(publicIpAddress, files) {
                             console.log(`Successfully pushed ${file.filename}`);
                         }
                     });
+                    activeSFTPConnection = false;
+                    if (!activeSFTPConnection) {
+                        sftp.end();
+                    }
                     resolve();
                 } catch (ex) {
                     console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
