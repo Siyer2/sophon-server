@@ -11,7 +11,6 @@ var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 var passport = require('passport');
-var { ObjectId } = require('mongodb');
 AWS.config.loadFromPath('./awsKeys.json');
 const { Consumer } = require('sqs-consumer');
 const config = require('../config');
@@ -140,10 +139,7 @@ router.post('/studentlist', passport.authenticate('jwt', { session: false }), as
 // Lecturer downloads students submission folder
 router.post('/download', passport.authenticate('jwt', { session: false }), async function (request, response) {
     try {
-        // const submissionLocation = request.body.submissionLocation;
-        // const studentId = request.body.studentId;
-        const submissionLocation = "z5113480_i09";
-        const studentId = "z5113480";
+        const submissionLocation = request.body.submissionLocation;
         const s3 = new AWS.S3();
 
         const s3Objects = await s3
@@ -156,7 +152,7 @@ router.post('/download', passport.authenticate('jwt', { session: false }), async
         });
 
         response.set('content-type', 'application/zip');
-        response.header('Content-Disposition', `attachment; filename="${studentId}.zip"`);
+        response.header('Content-Disposition', `attachment; filename="student.zip"`);
 
         s3Zip
             .archive({ s3: s3, bucket: config.settings.SUBMISSION_BUCKET }, submissionLocation, filesArray)
