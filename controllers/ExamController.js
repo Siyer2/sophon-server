@@ -23,7 +23,7 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
         // Parse the request
         const parsedFormData = await parseFormData(request);
         const filePath = parsedFormData.files.file[0].path;
-        const fileName = parsedFormData.files.file[0].originalFilename.replace(" ", "_");
+        const fileName = parsedFormData.files.file[0].originalFilename.replace(/ /g, "_");
         const file = fs.createReadStream(filePath);
 
         // Create an exam code
