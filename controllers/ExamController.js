@@ -18,7 +18,7 @@ const config = require('../config');
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', passport.authenticate('jwt', { session: false }), async function (request, response) {
     const lecturerId = request.user._id.toString();
-
+    
     try {
         // Parse the request
         const parsedFormData = await parseFormData(request);
@@ -443,7 +443,7 @@ function pushFilesToInstance(publicIpAddress, files) {
             sftp.connect({
                 host: publicIpAddress,
                 username: 'Administrator',
-                password: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt',
+                password: process.env.ACCOUNT_PASSWORD,
                 port: '22', 
                 tryKeyboard: true
             }).then(() => {

@@ -35,5 +35,3 @@ server.listen(port, function (err) {
 
     console.log(`API running on port ${port}...`);
 });
-
-require('./examSockets')(server);
