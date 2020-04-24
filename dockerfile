@@ -8,14 +8,17 @@ WORKDIR /usr/src/app
 # where available (npm@5+)
 COPY package*.json ./
 
-RUN npm install
-# If you are building your code for production
-# RUN npm ci --only=production
+RUN apk add --no-cache --virtual deps \
+    python \
+    build-base \
+    && npm install \
+    && apk del deps
 
 # Bundle app source
 COPY . .
 
-EXPOSE 8000
-
 ENV DEPLOYMENT=production
-CMD [ "node", "server.js" ]
+CMD [ "node", "index.js" ]
+
+## To build: docker build -t sophon-server .
+## To run: docker run -it -p 80:5902 sophon-server
