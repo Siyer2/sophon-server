@@ -221,114 +221,6 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
     }
 });
 
-// TODO: Remove the following endpoint
-router.ws('/enter', async function(client, request) {
-    const examCode = request.body.examCode ? request.body.examCode : 'SYAM1203';
-    const studentId = request.body.studentId ? request.body.studentId  : 'z0000000';
-    const userId = request.user._id;
-
-    // Get the exam (including applications and startup message)
-    const exam = await request.db.collection("exams").findOne({ examCode: examCode });
-    if (!exam) {
-        client.close(400, `No exam found for code ${examCode}`);
-    }
-
-    const tags = [
-        {
-            Key: "ExamCode",
-            Value: examCode
-        },
-        {
-            Key: "StudentId",
-            Value: studentId
-        }
-    ];
-
-    // Start a new EC2 and return it's IP address
-    const createEC2 = await EC2.createEC2s(1, exam, tags);
-    const instanceId = createEC2.Instances[0].InstanceId;
-
-    // Wait till running
-    const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-
-    // Get the public IP address
-    const target_host = runningEC2.PublicIpAddress;
-
-    // Wait for the scripts to install
-    await waitForScriptsToLoad(instanceId);
-
-    // Start the proxy server
-    onConnectedCallback = null,
-    onDisconnectedCallback = null;
-    const target_port = 5901;
-
-    console.log(`Connecting to ${target_host}:${target_port}...`);
-    console.log(`Password: ${instanceId.substring(0, 8)}`);
-
-    var target = net.createConnection(target_port, target_host, function () {
-        if (onConnectedCallback) {
-            try {
-                onConnectedCallback(client, target);
-            } catch (e) {
-                console.log("onConnectedCallback failed, cleaning up target");
-                target.end();
-            }
-        }
-    });
-
-    target.on('data', function (data) {
-        try {
-            client.send(data);
-        } catch (e) {
-            console.log("Client closed, cleaning up target");
-            target.end();
-        }
-    });
-    target.on('end', function () {
-        console.log('target disconnected');
-        client.close();
-    });
-    target.on('error', function () {
-        console.log('target connection error');
-        target.end();
-        client.close();
-    });
-
-    client.on('message', function (msg) {
-        target.write(msg);
-    });
-    client.on('close', function (code, reason) {
-
-        if (onDisconnectedCallback) {
-            try {
-                onDisconnectedCallback(client, code, reason);
-            } catch (e) {
-                console.log("onDisconnectedCallback failed");
-            }
-        }
-
-        console.log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
-        target.end();
-    });
-    client.on('error', function (a) {
-        console.log('WebSocket client error: ' + a);
-        target.end();
-    });
-});
-
-//== Test Endpoints ==//
-router.get('/submit', async function (request, response) {
-    try {
-        const directory = 'z5113480_i09'; // TODO: Make this dynamic based on their student id or some unique concat
-        await getStudentSubmission('54.252.243.233', directory);
-
-        return response.send("success");
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-//== End Test Endpoints ==//
-
 //== Helper Functions ==//
 // Push the lecturers question files to the running instance
 function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
@@ -482,45 +374,6 @@ function pushFilesToInstance(publicIpAddress, files) {
     });
 }
 
-function getStudentSubmission(publicIpAddress, directory) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            console.log("Attempting connection to instance...", publicIpAddress);
-            sftp.connect({
-                host: publicIpAddress,
-                username: 'Administrator',
-                password: '%WuzAjXxMQeXpU.jK&;Z)6Bn8BSC8C6p',
-                port: '22'
-            }).then(() => {
-                return sftp.list('C:/Users/DefaultAccount/Desktop/submit');
-            }).then((data) => {
-                len = data.length;
-                data.forEach(x => {
-                    let remoteFilePath = 'C:/Users/DefaultAccount/Desktop/submit/' + x.name;
-                    sftp.get(remoteFilePath).then(async (stream) => {
-                        let file = `${directory}/${x.name}`;
-
-                        // Save the submission in S3
-                        await uploadToS3(stream, file, config.settings.SUBMISSION_BUCKET);
-                    });
-                });
-
-                sftp.on('error', error => {
-                    console.log(error);
-                });
-
-                resolve();
-            }).catch((err) => {
-                console.log(err, 'catch error');
-                reject(err);
-            });
-        } catch (ex) {
-            reject(ex);
-            console.log("EXCEPTION GETTING SUBMIT FOLDER", ex);
-        }
-    });
-}
-
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -537,29 +390,6 @@ function createUniqueExamCode(db) {
             }
         } catch (ex) {
             console.log("EXCEPTION CREATING UNIQUE EXAM CODE");
-            reject(ex);
-        }
-    });
-}
-
-function waitForScriptsToLoad(instanceId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
-            const app = Consumer.create({
-                queueUrl: queueUrl,
-                handleMessage: async (message) => {
-                    if (message.Body.toString() === instanceId) {
-                        console.log("Finished loading scripts", message.Body);
-                        resolve(message);
-                    }
-                },
-                sqs: new AWS.SQS()
-            });
-
-            app.start();
-        } catch (ex) {
-            console.log("EXCEPTION waiting for scripts to load", ex);
             reject(ex);
         }
     });
