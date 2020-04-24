@@ -25,7 +25,6 @@
     "moment": "^2.24.0",
     "mongodb": "^3.5.3",
     "multiparty": "^4.2.1",
-    "node-rdpjs": "https://github.com/Siyer2/node-rdpjs.git",
     "nodemon": "^2.0.2",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
