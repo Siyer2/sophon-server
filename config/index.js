@@ -6,6 +6,11 @@ let settings = {
     UPLOAD_BUCKET: 'uploads.thesophon.com', // handles questions from teachers
 }
 
-settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-hwulk.mongodb.net/test?retryWrites=true&w=majority`;
+if (process.env.DEPLOYMENT === 'production') {
+    settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-pl-0.hwulk.mongodb.net/test?retryWrites=true&w=majority`;
+}
+else {
+    settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-hwulk.mongodb.net/test?retryWrites=true&w=majority`;
+}
 
 exports.settings = settings;
