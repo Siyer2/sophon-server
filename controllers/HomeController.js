@@ -1,7 +1,7 @@
 var router = (require('express')).Router();
 const passport = require('passport');
 const dbHelper = require('../services/database');
-const { hashPassword } = require('../services/helperFunctions');
+// const { hashPassword } = require('../services/helperFunctions'); // Need to use this when sign up is enabled
 
 // Additional libraries
 var moment = require('moment');
