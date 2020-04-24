@@ -1,6 +1,5 @@
 var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
-var net = require('net');
 var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
 var fs = require('fs');
@@ -12,7 +11,6 @@ var Client = require('ssh2-sftp-client');
 var sftp = new Client();
 var passport = require('passport');
 AWS.config.loadFromPath('./awsKeys.json');
-const { Consumer } = require('sqs-consumer');
 const config = require('../config');
 
 // Lecturer creates exam; params: examName, file, application
