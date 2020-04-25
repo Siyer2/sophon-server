@@ -9,6 +9,9 @@ let settings = {
 if (process.env.DEPLOYMENT === 'production') {
     settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-pl-0.hwulk.mongodb.net/test?retryWrites=true&w=majority`;
 }
+else if (process.env.DEPLOYMENT === 'local') {
+    settings.DB_CONNECTION_STRING = `mongodb://localhost:27017`;
+}
 else {
     settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-hwulk.mongodb.net/test?retryWrites=true&w=majority`;
 }
