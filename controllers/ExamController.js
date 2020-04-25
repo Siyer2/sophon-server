@@ -325,7 +325,6 @@ function uploadToS3(file, filepath, bucket) {
 }
 
 // Upload the lecturer's questions to a running instance
-var activeSFTPConnection = false;
 function pushFilesToInstance(publicIpAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -336,21 +335,17 @@ function pushFilesToInstance(publicIpAddress, files) {
                 password: process.env.ACCOUNT_PASSWORD,
                 port: '22', 
                 tryKeyboard: true
-            }).then(() => {
-                activeSFTPConnection = true;
+            }).then(async () => {
                 console.log("Connected to instance", publicIpAddress);
                 try {
-                    files.map(async (file) => {
-                        // Push to remote desktop
-                        if (file.filename && file.file) {
-                            await sftp.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
-                            console.log(`Successfully pushed ${file.filename}`);
-                        }
-                    });
-                    activeSFTPConnection = false;
-                    if (!activeSFTPConnection) {
-                        sftp.end();
+                    const file = files[0];
+                    // Push to remote desktop
+                    if (file.filename && file.file) {
+                        await sftp.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
+                        console.log(`Successfully pushed ${file.filename}`);
                     }
+
+                    sftp.end();
 
                     sftp.on('error', error => {
                         console.log(error);
