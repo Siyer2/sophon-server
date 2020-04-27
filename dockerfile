@@ -17,6 +17,8 @@ RUN apk add --no-cache --virtual deps \
 # Bundle app source
 COPY . .
 
+EXPOSE 5902
+
 ENV DEPLOYMENT=production
 CMD [ "node", "index.js" ]
 

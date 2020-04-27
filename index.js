@@ -4,6 +4,7 @@ var app = express();
 var cors = require('cors');
 require('express-ws')(app); // DELETE
 var server = require('http').Server(app);
+var config = require('./config');
 
 const port = process.env.PORT ? process.env.PORT : 5902;
 
@@ -12,7 +13,7 @@ app.use(express.json());
 
 // Configure CORS
 var corsOptions = {
-    origin: process.env.DEPLOYMENT === 'production' ? [process.env.PRODURL, 'http://localhost:3000'] : 'http://localhost:3000',
+    origin: config.settings.ALLOWED_APP_URLS,
     optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 app.use(cors(corsOptions));
