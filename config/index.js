@@ -7,7 +7,7 @@ let settings = {
 }
 
 if (process.env.DEPLOYMENT === 'production') {
-    settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-pl-0.hwulk.mongodb.net/test?retryWrites=true&w=majority`;
+    settings.DB_CONNECTION_STRING = `mongodb+srv://${settings.DB_USER}:${settings.DB_PASSWORD}@os-staging-hwulk.mongodb.net/test?retryWrites=true&w=majority`;
     settings.ALLOWED_APP_URLS = ['http://thesophon.com', 'http://localhost:3000'];
 }
 else if (process.env.DEPLOYMENT === 'local') {

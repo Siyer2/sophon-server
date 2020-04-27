@@ -18,7 +18,6 @@ router.use(async function timeLog(request, response, next) {
 
 //==== Testing ====//
 router.get('/', async function (request, response) {
-    console.log("environment", process.env.DEPLOYMENT);
     response.send(`API is working || Version 19:36 || ${process.env.DEPLOYMENT}`);
 });
 
