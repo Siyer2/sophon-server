@@ -332,7 +332,7 @@ function pushFilesToInstance(publicIpAddress, files) {
             sftp.connect({
                 host: publicIpAddress,
                 username: 'Administrator',
-                password: process.env.ACCOUNT_PASSWORD,
+                password: config.settings.ACCOUNT_PASSWORD,
                 port: '22', 
                 tryKeyboard: true
             }).then(async () => {
