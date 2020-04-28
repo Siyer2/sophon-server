@@ -86,8 +86,9 @@ router.post('/enter', async function (request, response) {
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
         console.log("Instance running...");
 
-        // Get the public IP address
-        const targetHost = runningEC2.PublicIpAddress;
+        // Get the appropriate IP address
+        // If in VPC, need to use the private ip address, else use public
+        const targetHost = (process.env.DEPLOYMENT === 'local') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
 
         // Upload the lecturers files to the instance
         const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
@@ -325,18 +326,18 @@ function uploadToS3(file, filepath, bucket) {
 }
 
 // Upload the lecturer's questions to a running instance
-function pushFilesToInstance(publicIpAddress, files) {
+function pushFilesToInstance(ipAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
-            console.log("Attempting connection to instance...", publicIpAddress);
+            console.log("Attempting connection to instance...", ipAddress);
             sftp.connect({
-                host: publicIpAddress,
+                host: ipAddress,
                 username: 'Administrator',
                 password: config.settings.ACCOUNT_PASSWORD,
                 port: '22', 
                 tryKeyboard: true
             }).then(async () => {
-                console.log("Connected to instance", publicIpAddress);
+                console.log("Connected to instance", ipAddress);
                 try {
                     const file = files[0];
                     // Push to remote desktop
