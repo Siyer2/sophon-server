@@ -5,11 +5,13 @@ var cors = require('cors');
 require('express-ws')(app); // DELETE
 var server = require('http').Server(app);
 var config = require('./config');
+const formidableMiddleware = require('express-formidable');
 
 const port = process.env.PORT ? process.env.PORT : 5902;
 
-// Initialise the database
+// Server config
 app.use(express.json());
+app.use(formidableMiddleware());
 
 // Configure CORS
 var corsOptions = {

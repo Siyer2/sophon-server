@@ -22,5 +22,6 @@ EXPOSE 5902
 ENV DEPLOYMENT=production
 CMD [ "node", "index.js" ]
 
-## To build: docker build -t sophon-server .
-## To run: docker run -it -p 80:5902 sophon-server
+## To build: docker build -t api.thesophon.com .
+## To run: docker run -p 5902:5902 api.thesophon.com
+## Together: docker build -t api.thesophon.com . && docker run -p 5902:5902 api.thesophon.com

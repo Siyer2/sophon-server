@@ -2,6 +2,7 @@ var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
+// var Busboy = require('busboy');
 var fs = require('fs');
 var moment = require('moment');
 var s3Zip = require('s3-zip');
@@ -19,23 +20,22 @@ router.post('/create', passport.authenticate('jwt', { session: false }), async f
     
     try {
         // Parse the request
-        const parsedFormData = await parseFormData(request);
-        const filePath = parsedFormData.files.file[0].path;
-        const fileName = parsedFormData.files.file[0].originalFilename.replace(/ /g, "_");
+        const filePath = request.files.file.path;
+        const fileName = request.files.file.name.replace(' ', '_');
         const file = fs.createReadStream(filePath);
 
         // Create an exam code
         const examCode = await createUniqueExamCode(request.db);
-
+        
         // Upload files to S3
         const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
-
+        
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
             lecturerId,
-            examName: parsedFormData.fields.examName[0],
+            examName: request.fields.examName,
             examCode,
-            application: parsedFormData.fields.applicationId[0], 
+            application: request.fields.applicationId, 
             questionLocation: questionLocation, 
             time: moment().utc().format()
         });
@@ -278,25 +278,6 @@ function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) 
             reject({ status: "error", error })
         }
     })
-}
-function parseFormData(request) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            var form = new multiparty.Form();
-            form.parse(request, function (err, fields, files) {
-                if (err) {
-                    console.log("MULTIPARTY ERROR PARSING FORM", err);
-                    reject(err);
-                }
-                else {
-                    resolve({ fields, files });
-                }
-            });
-        } catch (error) {
-            console.log("ERROR PARSING FORM", error);
-            reject(error);
-        }
-    });
 }
 
 function uploadToS3(file, filepath, bucket) {

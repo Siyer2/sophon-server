@@ -18,7 +18,7 @@ router.use(async function timeLog(request, response, next) {
 
 //==== Testing ====//
 router.get('/', async function (request, response) {
-    response.send(`API is working || Version 1588119936 || ${process.env.DEPLOYMENT}`);
+    response.send(`API is working || Version 1588152591 || ${process.env.DEPLOYMENT}`);
 });
 
 //==== Authentication ====//
