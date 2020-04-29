@@ -7,7 +7,6 @@ var s3Zip = require('s3-zip');
 var path = require('path');
 var { ObjectId } = require('mongodb');
 var Client = require('ssh2-sftp-client');
-var sftp = new Client();
 var passport = require('passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const config = require('../config');
@@ -20,7 +19,7 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
     try {
         // Parse the request
         const filePath = request.files.file.path;
-        const fileName = request.files.file.name.replace(' ', '_');
+        const fileName = request.files.file.name.replace(/ /g, "_");
         const file = fs.createReadStream(filePath);
 
         // Create an exam code
@@ -87,7 +86,7 @@ router.post('/enter', async function (request, response) {
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
-        const targetHost = (process.env.DEPLOYMENT === 'local') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
+        const targetHost = (process.env.DEPLOYMENT !== 'production') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
 
         // Upload the lecturers files to the instance
         const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
@@ -314,11 +313,12 @@ function pushFilesToInstance(ipAddress, files) {
     return new Promise(async (resolve, reject) => {
         try {
             console.log("Attempting connection to instance...", ipAddress);
+            var sftp = new Client(ipAddress);
             sftp.connect({
                 host: ipAddress,
                 username: 'Administrator',
                 password: config.settings.ACCOUNT_PASSWORD,
-                port: '22', 
+                port: '22',
                 tryKeyboard: true
             }).then(async () => {
                 console.log("Connected to instance", ipAddress);
@@ -330,8 +330,6 @@ function pushFilesToInstance(ipAddress, files) {
                         console.log(`Successfully pushed ${file.filename}`);
                     }
 
-                    sftp.end();
-
                     sftp.on('error', error => {
                         console.log(error);
                     });
@@ -339,6 +337,8 @@ function pushFilesToInstance(ipAddress, files) {
                     resolve();
                 } catch (ex) {
                     console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
+                } finally {
+                    sftp.end();
                 }
 
             }).catch((err) => {
@@ -351,6 +351,55 @@ function pushFilesToInstance(ipAddress, files) {
         }
     });
 }
+
+/*
+// Upload the lecturer's questions to a running instance
+function pushFilesToInstance(ipAddress, files) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            console.log("Attempting connection to instance...", ipAddress);
+            var client = new Client(ipAddress);
+            const clientConfig = {
+                host: ipAddress,
+                username: 'Administrator',
+                password: config.settings.ACCOUNT_PASSWORD,
+                port: '22',
+                tryKeyboard: true
+            };
+
+            client.connect(clientConfig).then(async () => {
+                console.log("Connected to instance", ipAddress);
+                try {
+                    const file = files[0];
+                    console.log("files", files);
+                    // Push to remote desktop
+                    if (file.filename && file.file) {
+                        await client.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
+                        console.log(`Successfully pushed ${file.filename}`);
+                    }
+
+                    client.on('error', error => {
+                        console.log(error);
+                    });
+
+                    resolve();
+                } catch (ex) {
+                    console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
+                } finally {
+                    client.end();
+                }
+
+            }).catch((err) => {
+                console.log("ERROR PUSHING FILES TO INSTANCE", err);
+                reject(err);
+            });
+        } catch (ex) {
+            reject(ex);
+            console.log("EXCEPTION PUSHING FILES TO INSTANCE", ex);
+        }
+    });
+}
+*/
 
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
