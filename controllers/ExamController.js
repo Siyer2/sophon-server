@@ -146,6 +146,10 @@ router.post('/download', passport.authenticate('jwt', { session: false }), async
             .listObjectsV2({ Bucket: config.settings.SUBMISSION_BUCKET, Prefix: submissionLocation })
             .promise();
 
+        if (!s3Objects.Contents.length) {
+            return response.status(500).json({ error: "Student didn't submit anything." });
+        }
+
         const filesArray = s3Objects.Contents.map((file) => {
             const filename = path.basename(file.Key);
             return filename;
