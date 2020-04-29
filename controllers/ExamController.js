@@ -1,8 +1,6 @@
 var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var AWS = require('aws-sdk');
-var multiparty = require('multiparty');
-// var Busboy = require('busboy');
 var fs = require('fs');
 var moment = require('moment');
 var s3Zip = require('s3-zip');
@@ -13,9 +11,10 @@ var sftp = new Client();
 var passport = require('passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const config = require('../config');
+const formidableMiddleware = require('express-formidable');
 
 // Lecturer creates exam; params: examName, file, application
-router.post('/create', passport.authenticate('jwt', { session: false }), async function (request, response) {
+router.post('/create', [passport.authenticate('jwt', { session: false }), formidableMiddleware()], async function (request, response) {
     const lecturerId = request.user._id.toString();
     
     try {
