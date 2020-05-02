@@ -5,7 +5,7 @@ const dbHelper = require('../services/database');
 ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
-    createEC2s: function (numberOfEc2s, tags, AMIId) {
+    createEC2s: function (numberOfEc2s, tags, AMIId, userdata) {
         return new Promise(async (resolve, reject) => {
             try {
                 var params = {
@@ -20,7 +20,8 @@ module.exports = {
                             ResourceType: "instance",
                             Tags: tags
                         }
-                    ]
+                    ], 
+                    ...userdata && { UserData: Buffer.from(userdata).toString('base64') }
                 }
 
                 ec2.runInstances(params, function (err, data) {

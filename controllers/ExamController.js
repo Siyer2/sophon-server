@@ -86,7 +86,11 @@ router.post('/enter', async function (request, response) {
                 Value: studentId
             }
         ];
-        const createEC2 = await EC2.createEC2s(1, tags, AMI);
+        const userdata = `<powershell>
+            Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2
+</powershell>
+        `;
+        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
         const instanceId = createEC2.Instances[0].InstanceId;
 
         // Wait till running
@@ -97,10 +101,7 @@ router.post('/enter', async function (request, response) {
         // If in VPC, need to use the private ip address, else use public
         const targetHost = (process.env.DEPLOYMENT !== 'production') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
 
-        // Upload the lecturers files to the instance
-        await pushLecturerFile(instanceId, exam.lecturerId, examCode);
-
-        console.log("Finished pushing all files");
+        // console.log("Finished pushing all files");
 
         // Store the student entrance in Mongo
         const examEntrance = await request.db.collection("examEntrances").insertOne({
