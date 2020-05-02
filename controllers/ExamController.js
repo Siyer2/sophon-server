@@ -6,43 +6,10 @@ var moment = require('moment');
 var s3Zip = require('s3-zip');
 var path = require('path');
 var { ObjectId } = require('mongodb');
-var Client = require('ssh2-sftp-client');
 var passport = require('passport');
 AWS.config.loadFromPath('./awsKeys.json');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
-
-function pushLecturerFile(instanceId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            var ssm = new AWS.SSM();
-            var sendCommandParams = {
-                "DocumentName": "AWS-RunPowerShellScript",
-                "InstanceIds": [
-                    instanceId
-                ],
-                "Parameters": {
-                    "commands": [
-                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix 5e48a37e8f48f33ff8374e68\\aofslfm -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
-                    ]
-                }
-            }
-            console.log("Pushing files to ", instanceId);
-
-            ssm.sendCommand(sendCommandParams, function (err, data) {
-                if (err) {
-                    console.log("AWS ERROR SENDING COMMAND", err);
-                    reject(err);
-                }
-                else {
-                    resolve();
-                }
-            });
-        } catch (ex) {
-            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
-        }
-    });
-}
 
 router.get('/ssm', async function (request, response) {
     try {
@@ -124,17 +91,15 @@ router.post('/enter', async function (request, response) {
 
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-        console.log("Instance running...");
+        console.log("Instance running...", instanceId);
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
         const targetHost = (process.env.DEPLOYMENT !== 'production') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
 
         // Upload the lecturers files to the instance
-        const uploadingProgress = await updateInstanceWithLecturersQuestions(exam.lecturerId, examCode, targetHost);
-        if (uploadingProgress.status === 'error') {
-            return response.status(400).json({ error: uploadingProgress.error });
-        }
+        await pushLecturerFile(instanceId, exam.lecturerId, examCode);
+
         console.log("Finished pushing all files");
 
         // Store the student entrance in Mongo
@@ -266,59 +231,38 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 
 //== Helper Functions ==//
 // Push the lecturers question files to the running instance
-function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
+function pushLecturerFile(instanceId, lecturerId, examCode) {
+    console.log(`Pushing files to instance ${instanceId}...`);
     return new Promise(async (resolve, reject) => {
         try {
-            var s3 = new AWS.S3({
-                apiVersion: '2006-03-01'
-            });
-            var listParams = {
-                Bucket: config.settings.UPLOAD_BUCKET,
-                Prefix: `${lecturerId}/${examCode}/`
+            var ssm = new AWS.SSM();
+            var sendCommandParams = {
+                "DocumentName": "AWS-RunPowerShellScript",
+                "InstanceIds": [
+                    instanceId
+                ],
+                "Parameters": {
+                    "commands": [
+                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
+                    ]
+                }
             }
-            s3.listObjectsV2(listParams, async function (err, data) {
+
+            ssm.sendCommand(sendCommandParams, function (err, data) {
                 if (err) {
-                    console.log("AWS ERROR LISTING OBJECTSV2", err);
-                    resolve({ status: "error", error: err });
+                    console.log("AWS ERROR SENDING COMMAND", err);
+                    reject(err);
                 }
                 else {
-                    const promises = data.Contents.map((file) => {
-                        return new Promise(async (resolve, reject) => {
-                            try {
-                                // Get the object
-                                s3.getObject({
-                                    Bucket: config.settings.UPLOAD_BUCKET,
-                                    Key: file.Key
-                                }, function (err, data) {
-                                    if (err) {
-                                        console.log("AWS ERROR GETTING OBJECT", err);
-                                        reject(err);
-                                    }
-                                    else {
-                                        // Add to the files array
-                                        if (data.Body) {
-                                            console.log(file.Key);
-                                            resolve({ file: data.Body, filename: file.Key.substring(file.Key.lastIndexOf("/") + 1) });
-                                        }
-                                    }
-                                });
-                            } catch (ex) {
-                                reject("EXCEPTION GETTING OBJECT", ex);
-                            }
-                        });
-                    });
-
-                    const files = await Promise.all(promises);
-                    await pushFilesToInstance(instanceId, files);
-                    resolve({ "status": "success" });
+                    resolve(data);
                 }
             });
-        } catch (error) {
-            console.log("ERROR updateInstanceWithLecturersQuestions", error);
-            reject({ status: "error", error })
+        } catch (ex) {
+            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
         }
-    })
+    });
 }
+
 
 function uploadToS3(file, filepath, bucket) {
     return new Promise(async (resolve, reject) => {
@@ -349,99 +293,6 @@ function uploadToS3(file, filepath, bucket) {
         }
     });
 }
-
-// Upload the lecturer's questions to a running instance
-function pushFilesToInstance(ipAddress, files) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            console.log("Attempting connection to instance...", ipAddress);
-            var sftp = new Client(ipAddress);
-            sftp.connect({
-                host: ipAddress,
-                username: 'Administrator',
-                password: config.settings.ACCOUNT_PASSWORD,
-                port: '22',
-                tryKeyboard: true
-            }).then(async () => {
-                console.log("Connected to instance", ipAddress);
-                try {
-                    const file = files[0];
-                    // Push to remote desktop
-                    if (file.filename && file.file) {
-                        await sftp.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
-                        console.log(`Successfully pushed ${file.filename}`);
-                    }
-
-                    sftp.on('error', error => {
-                        console.log(error);
-                        sftp.end();
-                    });
-
-                    resolve();
-                } catch (ex) {
-                    console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
-                } finally {
-                    sftp.end();
-                }
-            }).catch((err) => {
-                console.log("ERROR PUSHING FILES TO INSTANCE", err);
-                reject(err);
-            });
-        } catch (ex) {
-            reject(ex);
-            console.log("EXCEPTION PUSHING FILES TO INSTANCE", ex);
-        }
-    });
-}
-
-/*
-// Upload the lecturer's questions to a running instance
-function pushFilesToInstance(ipAddress, files) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            console.log("Attempting connection to instance...", ipAddress);
-            var client = new Client(ipAddress);
-            const clientConfig = {
-                host: ipAddress,
-                username: 'Administrator',
-                password: config.settings.ACCOUNT_PASSWORD,
-                port: '22',
-                tryKeyboard: true
-            };
-
-            client.connect(clientConfig).then(async () => {
-                console.log("Connected to instance", ipAddress);
-                try {
-                    const file = files[0];
-                    console.log("files", files);
-                    // Push to remote desktop
-                    if (file.filename && file.file) {
-                        await client.put(file.file, `C:/Users/DefaultAccount/Desktop/${file.filename}`);
-                        console.log(`Successfully pushed ${file.filename}`);
-                    }
-
-                    client.on('error', error => {
-                        console.log(error);
-                    });
-
-                    resolve();
-                } catch (ex) {
-                    console.log("SFTP EXCEPTION PUSHING FILES TO INSTANCE", ex);
-                } finally {
-                    client.end();
-                }
-
-            }).catch((err) => {
-                console.log("ERROR PUSHING FILES TO INSTANCE", err);
-                reject(err);
-            });
-        } catch (ex) {
-            reject(ex);
-            console.log("EXCEPTION PUSHING FILES TO INSTANCE", ex);
-        }
-    });
-}
-*/
 
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
