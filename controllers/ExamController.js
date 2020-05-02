@@ -12,10 +12,52 @@ AWS.config.loadFromPath('./awsKeys.json');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
 
+function pushLecturerFile(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var ssm = new AWS.SSM();
+            var sendCommandParams = {
+                "DocumentName": "AWS-RunPowerShellScript",
+                "InstanceIds": [
+                    instanceId
+                ],
+                "Parameters": {
+                    "commands": [
+                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix 5e48a37e8f48f33ff8374e68\\aofslfm -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
+                    ]
+                }
+            }
+            console.log("Pushing files to ", instanceId);
+
+            ssm.sendCommand(sendCommandParams, function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR SENDING COMMAND", err);
+                    reject(err);
+                }
+                else {
+                    resolve();
+                }
+            });
+        } catch (ex) {
+            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
+        }
+    });
+}
+
+router.get('/ssm', async function (request, response) {
+    try {
+        const instanceId = 'i-0b2257959487b8a14';
+        await pushLecturerFile(instanceId);
+        return response.send("success");
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', [passport.authenticate('jwt', { session: false }), formidableMiddleware()], async function (request, response) {
     const lecturerId = request.user._id.toString();
-    
+
     try {
         // Parse the request
         const filePath = request.files.file.path;
@@ -24,17 +66,17 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
 
         // Create an exam code
         const examCode = await createUniqueExamCode(request.db);
-        
+
         // Upload files to S3
         const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
-        
+
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
             lecturerId,
             examName: request.fields.examName,
             examCode,
-            application: request.fields.applicationId, 
-            questionLocation: questionLocation, 
+            application: request.fields.applicationId,
+            questionLocation: questionLocation,
             time: moment().utc().format()
         });
 
@@ -192,8 +234,8 @@ router.post('/toggleClose', passport.authenticate('jwt', { session: false }), as
         const isClosed = exam.isClosed ? exam.isClosed : false;
 
         await request.db.collection("exams").updateOne(
-            { _id: ObjectId(examId) }, 
-            { $set: { isClosed: !isClosed }}
+            { _id: ObjectId(examId) },
+            { $set: { isClosed: !isClosed } }
         );
 
         return response.json({ status: `${!isClosed === true ? "Closed" : "Opened"} exam with ID ${examId}` });
@@ -209,7 +251,7 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 
         // Empty the lecturer's questions from S3
         await emptyS3Directory(config.settings.UPLOAD_BUCKET, `${request.user._id.toString()}/${examCode}`);
-        
+
         // Empty the student's submissions from S3 
         await emptyS3Directory(config.settings.SUBMISSION_BUCKET, `${request.user._id.toString()}/${examCode}`);
 
@@ -225,7 +267,7 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 //== Helper Functions ==//
 // Push the lecturers question files to the running instance
 function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) {
-    return new Promise(async(resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
             var s3 = new AWS.S3({
                 apiVersion: '2006-03-01'
@@ -265,7 +307,7 @@ function updateInstanceWithLecturersQuestions(lecturerId, examCode, instanceId) 
                             }
                         });
                     });
-    
+
                     const files = await Promise.all(promises);
                     await pushFilesToInstance(instanceId, files);
                     resolve({ "status": "success" });
@@ -287,7 +329,7 @@ function uploadToS3(file, filepath, bucket) {
                     Bucket: bucket
                 }
             });
-            
+
             const uploadParams = {
                 Bucket: bucket,
                 Key: filepath,
@@ -300,7 +342,7 @@ function uploadToS3(file, filepath, bucket) {
                 } if (data) {
                     resolve(data.Location);
                 }
-            });  
+            });
         } catch (ex) {
             console.log("EXCEPTION UPLOADING TO S3", ex);
             reject(ex);
@@ -332,6 +374,7 @@ function pushFilesToInstance(ipAddress, files) {
 
                     sftp.on('error', error => {
                         console.log(error);
+                        sftp.end();
                     });
 
                     resolve();
@@ -340,7 +383,6 @@ function pushFilesToInstance(ipAddress, files) {
                 } finally {
                     sftp.end();
                 }
-
             }).catch((err) => {
                 console.log("ERROR PUSHING FILES TO INSTANCE", err);
                 reject(err);
