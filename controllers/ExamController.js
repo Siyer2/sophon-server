@@ -87,7 +87,7 @@ router.post('/enter', async function (request, response) {
             }
         ];
         // const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\n</powershell>\n<persist>true</persist>`;
-        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
+        const createEC2 = await EC2.createEC2s(1, tags, AMI);
         const instanceId = createEC2.Instances[0].InstanceId;
 
         // Wait till running
