@@ -11,16 +11,6 @@ AWS.config.loadFromPath('./awsKeys.json');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
 
-router.get('/ssm', async function (request, response) {
-    try {
-        const instanceId = 'i-0b2257959487b8a14';
-        await pushLecturerFile(instanceId);
-        return response.send("success");
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', [passport.authenticate('jwt', { session: false }), formidableMiddleware()], async function (request, response) {
     const lecturerId = request.user._id.toString();
@@ -226,40 +216,6 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 });
 
 //== Helper Functions ==//
-// Push the lecturers question files to the running instance
-function pushLecturerFile(instanceId, lecturerId, examCode) {
-    console.log(`Pushing files to instance ${instanceId}...`);
-    return new Promise(async (resolve, reject) => {
-        try {
-            var ssm = new AWS.SSM();
-            var sendCommandParams = {
-                "DocumentName": "AWS-RunPowerShellScript",
-                "InstanceIds": [
-                    instanceId
-                ],
-                "Parameters": {
-                    "commands": [
-                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
-                    ]
-                }
-            }
-
-            ssm.sendCommand(sendCommandParams, function (err, data) {
-                if (err) {
-                    console.log("AWS ERROR SENDING COMMAND", err);
-                    reject(err);
-                }
-                else {
-                    resolve(data);
-                }
-            });
-        } catch (ex) {
-            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
-        }
-    });
-}
-
-
 function uploadToS3(file, filepath, bucket) {
     return new Promise(async (resolve, reject) => {
         try {
