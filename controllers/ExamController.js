@@ -17,15 +17,15 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
 
     try {
         // Parse the request
-        const filePath = request.files.file.path;
-        const fileName = request.files.file.name.replace(/ /g, "_");
-        const file = fs.createReadStream(filePath);
+        // const filePath = request.files.file.path;
+        // const fileName = request.files.file.name.replace(/ /g, "_");
+        // const file = fs.createReadStream(filePath);
 
         // Create an exam code
         const examCode = await createUniqueExamCode(request.db);
 
         // Upload files to S3
-        const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
+        // const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
@@ -33,7 +33,7 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
             examName: request.fields.examName,
             examCode,
             application: request.fields.applicationId,
-            questionLocation: questionLocation,
+            // questionLocation: questionLocation,
             time: moment().utc().format()
         });
 
