@@ -1,7 +1,6 @@
 var AWS = require('aws-sdk');
 AWS.config.loadFromPath('./awsKeys.json');
 const ec2 = new AWS.EC2();
-const dbHelper = require('../services/database');
 ObjectId = require('mongodb').ObjectID;
 
 module.exports = {
