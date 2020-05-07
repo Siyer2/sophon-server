@@ -1,13 +1,13 @@
 var router = (require('express')).Router();
 var EC2 = require('../services/EC2');
 var AWS = require('aws-sdk');
-var fs = require('fs');
 var moment = require('moment');
 var s3Zip = require('s3-zip');
 var path = require('path');
 var { ObjectId } = require('mongodb');
 var passport = require('passport');
 AWS.config.loadFromPath('./awsKeys.json');
+var ssm = new AWS.SSM();
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
 
@@ -44,6 +44,103 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
     }
 });
 
+router.get('/ssm', async function (request, response) {
+    try {
+        const data = await uploadLecturerFiles("i-0ccd221fa2eedf3f2", "5e48a37e8f48f33ff8374e68", "aofslfm");
+        console.log("data", data);
+    
+        return response.send(data);
+    } catch (error) {
+        console.log("error", error);
+        return response.status(500).json({ error });
+    }
+});
+
+function uploadLecturerFiles(instanceId, lecturerId, examCode) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            await installSSM(instanceId);
+            await pushLecturerFile(instanceId, lecturerId, examCode);
+
+            resolve("success");
+        } catch (ex) {
+            console.log("EXCEPTION UPLOADING LECTURER FILES", ex);
+            reject(ex);
+        }
+    });
+}
+
+function pushLecturerFile(instanceId, lecturerId, examCode) {
+    console.log(`Pushing files to instance ${instanceId}...`);
+    return new Promise(async (resolve, reject) => {
+        try {
+            var sendCommandParams = {
+                "DocumentName": "AWS-RunPowerShellScript",
+                "InstanceIds": [
+                    instanceId
+                ],
+                "Parameters": {
+                    "commands": [
+                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
+                    ]
+                }
+            }
+
+            ssm.sendCommand(sendCommandParams, function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR SENDING COMMAND", err);
+                    reject(err);
+                }
+                else {
+                    resolve(data);
+                }
+            });
+        } catch (ex) {
+            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
+        }
+    });
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+} 
+
+function installSSM(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var params = {
+                Filters: [
+                    {
+                        Key: 'InstanceIds',
+                        Values: [instanceId]
+                    }
+                ]
+            };
+            ssm.describeInstanceInformation(params, async function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR DESCRIBING INSTANCE INFORMATION", err);
+                    reject(err);
+                }
+                else {
+                    if (data.InstanceInformationList.length > 0 && data.InstanceInformationList[0] && data.InstanceInformationList[0].AssociationStatus === 'Success') {
+                        console.log("SSM installed...");
+                        resolve();
+                    }
+                    else {
+                        console.log("None found, retrying in 30 seconds...");
+                        await sleep(10000);
+                        resolve(installSSM(instanceId));
+                    }
+                }
+            });
+        } catch (ex) {
+            console.log("EXCEPTION UPLOADING LECTURER FILES", ex);
+        }
+    });
+}
+
 // Student enters exam
 router.post('/enter', async function (request, response) {
     try {
@@ -76,6 +173,7 @@ router.post('/enter', async function (request, response) {
                 Value: studentId
             }
         ];
+
         // const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\n</powershell>\n<persist>true</persist>`;
         const createEC2 = await EC2.createEC2s(1, tags, AMI);
         const instanceId = createEC2.Instances[0].InstanceId;
@@ -83,6 +181,8 @@ router.post('/enter', async function (request, response) {
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
         console.log("Instance running...", instanceId);
+
+        // Put the lecturer files on it
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
