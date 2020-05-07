@@ -129,7 +129,7 @@ function installSSM(instanceId) {
                         resolve();
                     }
                     else {
-                        console.log("None found, retrying in 30 seconds...");
+                        console.log("None found, retrying in 10 seconds...");
                         await sleep(10000);
                         resolve(installSSM(instanceId));
                     }
@@ -174,7 +174,6 @@ router.post('/enter', async function (request, response) {
             }
         ];
 
-        // const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\n</powershell>\n<persist>true</persist>`;
         const createEC2 = await EC2.createEC2s(1, tags, AMI);
         const instanceId = createEC2.Instances[0].InstanceId;
 
@@ -183,6 +182,7 @@ router.post('/enter', async function (request, response) {
         console.log("Instance running...", instanceId);
 
         // Put the lecturer files on it
+        await uploadLecturerFiles(instanceId, exam.lecturerId, examCode);
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
