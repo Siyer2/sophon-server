@@ -92,11 +92,12 @@ function pushLecturerFile(instanceId, lecturerId, examCode) {
                     reject(err);
                 }
                 else {
-                    resolve(data);
+                    resolve();
                 }
             });
         } catch (ex) {
             console.log("EXCEPTION PUSHING LECTURER FILE", ex);
+            reject(ex);
         }
     });
 }
@@ -182,7 +183,7 @@ router.post('/enter', async function (request, response) {
         console.log("Instance running...", instanceId);
 
         // Put the lecturer files on it
-        await uploadLecturerFiles(instanceId, exam.lecturerId, examCode);
+        // await uploadLecturerFiles(instanceId, exam.lecturerId, examCode);
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
