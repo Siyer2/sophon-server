@@ -9,8 +9,10 @@ var passport = require('passport');
 var fs = require('fs');
 AWS.config.loadFromPath('./awsKeys.json');
 var ssm = new AWS.SSM();
+var moment = require('moment');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
+const { Consumer } = require('sqs-consumer');
 
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', [passport.authenticate('jwt', { session: false }), formidableMiddleware()], async function (request, response) {
@@ -206,13 +208,16 @@ router.post('/enter', async function (request, response) {
             }
         ];
 
-        const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\n</powershell>`;
+        const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\nSend-SQSMessage -MessageBody (wget http://169.254.169.254/latest/meta-data/instance-id).Content -QueueUrl https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates\n</powershell>`;
         const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata); 
         const instanceId = createEC2.Instances[0].InstanceId;
 
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
         console.log("Instance running...", instanceId);
+
+        // Wait for user data scripts to finish
+        await waitForScriptsToLoad(instanceId);
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
@@ -421,6 +426,36 @@ async function emptyS3Directory(bucket, dir) {
     await s3.deleteObjects(deleteParams).promise();
 
     if (listedObjects.IsTruncated) await emptyS3Directory(bucket, dir);
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+function waitForScriptsToLoad(instanceId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
+            const app = Consumer.create({
+                queueUrl: queueUrl,
+                handleMessage: async (message) => {
+                    if (message.Body.toString() === instanceId) {
+                        console.log(`Finished loading scripts ${moment().format('LLLL')}`, message.Body);
+                        app.stop();
+                        resolve(message);
+                    }
+                },
+                sqs: new AWS.SQS()
+            });
+
+            app.start();
+        } catch (ex) {
+            console.log("EXCEPTION waiting for scripts to load", ex);
+            reject(ex);
+        }
+    });
 }
 //== End Helper Functions ==//
 
