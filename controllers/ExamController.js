@@ -47,134 +47,6 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
     }
 });
 
-router.get('/ssm', async function (request, response) {
-    try {
-        const data = await uploadLecturerFiles("i-0ccd221fa2eedf3f2", "5e48a37e8f48f33ff8374e68", "aofslfm");
-        console.log("data", data);
-    
-        return response.send(data);
-    } catch (error) {
-        console.log("error", error);
-        return response.status(500).json({ error });
-    }
-});
-
-function uploadLecturerFiles(instanceId, lecturerId, examCode) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            await installSSM(instanceId);
-            await pushLecturerFile(instanceId, lecturerId, examCode);
-
-            resolve("success");
-        } catch (ex) {
-            console.log("EXCEPTION UPLOADING LECTURER FILES", ex);
-            reject(ex);
-        }
-    });
-}
-
-function pushLecturerFile(instanceId, lecturerId, examCode) {
-    console.log(`Pushing files to instance ${instanceId}...`);
-    return new Promise(async (resolve, reject) => {
-        try {
-            var sendCommandParams = {
-                "DocumentName": "AWS-RunPowerShellScript",
-                "InstanceIds": [
-                    instanceId
-                ],
-                "Parameters": {
-                    "commands": [
-                        `Copy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2`
-                    ]
-                }
-            }
-
-            ssm.sendCommand(sendCommandParams, function (err, data) {
-                if (err) {
-                    console.log("AWS ERROR SENDING COMMAND", err);
-                    reject(err);
-                }
-                else {
-                    resolve();
-                }
-            });
-        } catch (ex) {
-            console.log("EXCEPTION PUSHING LECTURER FILE", ex);
-            reject(ex);
-        }
-    });
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-} 
-
-function installSSM(instanceId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            var params = {
-                Filters: [
-                    {
-                        Key: 'InstanceIds',
-                        Values: [instanceId]
-                    }
-                ]
-            };
-            ssm.describeInstanceInformation(params, async function (err, data) {
-                if (err) {
-                    console.log("AWS ERROR DESCRIBING INSTANCE INFORMATION", err);
-                    reject(err);
-                }
-                else {
-                    if (data.InstanceInformationList.length > 0 && data.InstanceInformationList[0] && data.InstanceInformationList[0].AssociationStatus === 'Success') {
-                        console.log("SSM installed...");
-                        resolve();
-                    }
-                    else {
-                        console.log("None found, retrying in 10 seconds...");
-                        await sleep(10000);
-                        resolve(installSSM(instanceId));
-                    }
-                }
-            });
-        } catch (ex) {
-            console.log("EXCEPTION UPLOADING LECTURER FILES", ex);
-        }
-    });
-}
-
-router.get('/testUserData', async function(request, response) {
-    try {
-        const tags = [
-            {
-                Key: "ExamCode",
-                Value: "EXAMCODE"
-            },
-            {
-                Key: "StudentId",
-                Value: "STUDENTID"
-            }
-        ];
-
-        const AMI = "ami-0d082638d3fa98a39";
-
-        // change this
-        const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix "5ea38a8ccfcea0d9f7886247\\sbonpyer" -Folder C:\\Users\\Administrator\\Desktop -Region ap-southeast-2\n</powershell>`;
-        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
-        const instanceId = createEC2.Instances[0].InstanceId;
-
-        // Wait till running
-        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
-        console.log("Instance running...", instanceId);
-
-        return response.send(instanceId);
-    } catch (error) {
-        return response.status(500).json({ error });
-    }
-});
-
 // Student enters exam
 router.post('/enter', async function (request, response) {
     try {
@@ -217,8 +89,8 @@ router.post('/enter', async function (request, response) {
         console.log("Instance running...", instanceId);
 
         // Wait for user data scripts to finish
-        await waitForScriptsToLoad(instanceId);
-
+        // waitForScriptsToLoad(instanceId);
+        
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
         const targetHost = (process.env.DEPLOYMENT !== 'production') ? runningEC2.PublicIpAddress : runningEC2.PrivateIpAddress;
