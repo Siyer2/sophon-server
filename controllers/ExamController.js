@@ -6,7 +6,8 @@ var s3Zip = require('s3-zip');
 var path = require('path');
 var { ObjectId } = require('mongodb');
 var passport = require('passport');
-AWS.config.loadFromPath('./tempAWSKeys.json');
+var fs = require('fs');
+AWS.config.loadFromPath('./awsKeys.json');
 var ssm = new AWS.SSM();
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
@@ -17,15 +18,15 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
 
     try {
         // Parse the request
-        // const filePath = request.files.file.path;
-        // const fileName = request.files.file.name.replace(/ /g, "_");
-        // const file = fs.createReadStream(filePath);
+        const filePath = request.files.file.path;
+        const fileName = request.files.file.name.replace(/ /g, "_");
+        const file = fs.createReadStream(filePath);
 
         // Create an exam code
         const examCode = await createUniqueExamCode(request.db);
 
         // Upload files to S3
-        // const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
+        const questionLocation = await uploadToS3(file, `${lecturerId}/${examCode}/${fileName}`, config.settings.UPLOAD_BUCKET);
 
         // Save the exam code, start up message, applications in the database
         const exam = await request.db.collection("exams").insertOne({
@@ -33,7 +34,7 @@ router.post('/create', [passport.authenticate('jwt', { session: false }), formid
             examName: request.fields.examName,
             examCode,
             application: request.fields.applicationId,
-            // questionLocation: questionLocation,
+            questionLocation: questionLocation,
             time: moment().utc().format()
         });
 
@@ -155,10 +156,10 @@ router.get('/testUserData', async function(request, response) {
             }
         ];
 
-        const AMI = "ami-04a39cfb15ffbf16a";
+        const AMI = "ami-0d082638d3fa98a39";
 
         // change this
-        const userdata = `<powershell>\nCopy-S3Object -BucketName temp.q-83.com -KeyPrefix "5ea38a8ccfcea0d9f7886247\\sbonpyer" -Folder C:\\Users\\Administrator\\Desktop -Region ap-southeast-2\n</powershell>`;
+        const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix "5ea38a8ccfcea0d9f7886247\\sbonpyer" -Folder C:\\Users\\Administrator\\Desktop -Region ap-southeast-2\n</powershell>`;
         const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
         const instanceId = createEC2.Instances[0].InstanceId;
 
@@ -212,9 +213,6 @@ router.post('/enter', async function (request, response) {
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
         console.log("Instance running...", instanceId);
-
-        // Put the lecturer files on it
-        // await uploadLecturerFiles(instanceId, exam.lecturerId, examCode);
 
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
@@ -349,6 +347,36 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 });
 
 //== Helper Functions ==//
+function uploadToS3(file, filepath, bucket) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            var s3 = new AWS.S3({
+                apiVersion: '2006-03-01',
+                params: {
+                    Bucket: bucket
+                }
+            });
+
+            const uploadParams = {
+                Bucket: bucket,
+                Key: filepath,
+                Body: file
+            }
+
+            s3.upload(uploadParams, function (err, data) {
+                if (err) {
+                    console.log("AWS ERROR UPLOADING TO S3", err);
+                } if (data) {
+                    resolve(data.Location);
+                }
+            });
+        } catch (ex) {
+            console.log("EXCEPTION UPLOADING TO S3", ex);
+            reject(ex);
+        }
+    });
+}
+
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
         try {

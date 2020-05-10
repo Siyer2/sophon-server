@@ -1,5 +1,5 @@
 var AWS = require('aws-sdk');
-AWS.config.loadFromPath('./tempAWSKeys.json');
+AWS.config.loadFromPath('./awsKeys.json');
 const ec2 = new AWS.EC2();
 ObjectId = require('mongodb').ObjectID;
 
