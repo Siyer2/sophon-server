@@ -3,8 +3,7 @@ let settings = {
     DB_PASSWORD: "jxRW7pfsKWShxvZw", 
     DB_NAME: "osStag", 
     SUBMISSION_BUCKET: 'student-submissions.thesophon.com', // handles submissions by students
-    UPLOAD_BUCKET: 'uploads.thesophon.com', // handles questions from teachers
-    ACCOUNT_PASSWORD: '4mbA49H?vdO-mIp(=nTeP*psl4*j=Vwt'
+    UPLOAD_BUCKET: 'uploads.thesophon.com' // handles questions from teachers
 }
 
 if (process.env.DEPLOYMENT === 'production') {

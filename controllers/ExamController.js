@@ -6,7 +6,7 @@ var s3Zip = require('s3-zip');
 var path = require('path');
 var { ObjectId } = require('mongodb');
 var passport = require('passport');
-AWS.config.loadFromPath('./awsKeys.json');
+AWS.config.loadFromPath('./tempAWSKeys.json');
 var ssm = new AWS.SSM();
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
@@ -142,6 +142,36 @@ function installSSM(instanceId) {
     });
 }
 
+router.get('/testUserData', async function(request, response) {
+    try {
+        const tags = [
+            {
+                Key: "ExamCode",
+                Value: "EXAMCODE"
+            },
+            {
+                Key: "StudentId",
+                Value: "STUDENTID"
+            }
+        ];
+
+        const AMI = "ami-04a39cfb15ffbf16a";
+
+        // change this
+        const userdata = `<powershell>\nCopy-S3Object -BucketName temp.q-83.com -KeyPrefix "5ea38a8ccfcea0d9f7886247\\sbonpyer" -Folder C:\\Users\\Administrator\\Desktop -Region ap-southeast-2\n</powershell>`;
+        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
+        const instanceId = createEC2.Instances[0].InstanceId;
+
+        // Wait till running
+        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+        console.log("Instance running...", instanceId);
+
+        return response.send(instanceId);
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
+
 // Student enters exam
 router.post('/enter', async function (request, response) {
     try {
@@ -175,7 +205,8 @@ router.post('/enter', async function (request, response) {
             }
         ];
 
-        const createEC2 = await EC2.createEC2s(1, tags, AMI);
+        const userdata = `<powershell>\nCopy-S3Object -BucketName ${config.settings.UPLOAD_BUCKET} -KeyPrefix ${exam.lecturerId}\\${examCode} -LocalFolder C:\\Users\\DefaultAccount\\Desktop -Region ap-southeast-2\n</powershell>`;
+        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata); 
         const instanceId = createEC2.Instances[0].InstanceId;
 
         // Wait till running
@@ -267,7 +298,8 @@ router.get('/applications', passport.authenticate('jwt', { session: false }), as
         const applications = await request.db.collection("applications").aggregate([
             {
                 '$project': {
-                    'AMIId': 0
+                    '_id': 1, 
+                    'name': 1
                 }
             }
         ]).toArray();
@@ -317,36 +349,6 @@ router.post('/delete', passport.authenticate('jwt', { session: false }), async f
 });
 
 //== Helper Functions ==//
-function uploadToS3(file, filepath, bucket) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            var s3 = new AWS.S3({
-                apiVersion: '2006-03-01',
-                params: {
-                    Bucket: bucket
-                }
-            });
-
-            const uploadParams = {
-                Bucket: bucket,
-                Key: filepath,
-                Body: file
-            }
-
-            s3.upload(uploadParams, function (err, data) {
-                if (err) {
-                    console.log("AWS ERROR UPLOADING TO S3", err);
-                } if (data) {
-                    resolve(data.Location);
-                }
-            });
-        } catch (ex) {
-            console.log("EXCEPTION UPLOADING TO S3", ex);
-            reject(ex);
-        }
-    });
-}
-
 function createUniqueExamCode(db) {
     return new Promise(async (resolve, reject) => {
         try {
