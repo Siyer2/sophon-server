@@ -8,7 +8,6 @@ var { ObjectId } = require('mongodb');
 var passport = require('passport');
 var fs = require('fs');
 AWS.config.loadFromPath('./awsKeys.json');
-var ssm = new AWS.SSM();
 var moment = require('moment');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
@@ -87,9 +86,6 @@ router.post('/enter', async function (request, response) {
         // Wait till running
         const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
         console.log("Instance running...", instanceId);
-
-        // Wait for user data scripts to finish
-        // waitForScriptsToLoad(instanceId);
         
         // Get the appropriate IP address
         // If in VPC, need to use the private ip address, else use public
@@ -298,36 +294,6 @@ async function emptyS3Directory(bucket, dir) {
     await s3.deleteObjects(deleteParams).promise();
 
     if (listedObjects.IsTruncated) await emptyS3Directory(bucket, dir);
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-
-function waitForScriptsToLoad(instanceId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const queueUrl = 'https://sqs.ap-southeast-2.amazonaws.com/149750655235/scriptUpdates';
-            const app = Consumer.create({
-                queueUrl: queueUrl,
-                handleMessage: async (message) => {
-                    if (message.Body.toString() === instanceId) {
-                        console.log(`Finished loading scripts ${moment().format('LLLL')}`, message.Body);
-                        app.stop();
-                        resolve(message);
-                    }
-                },
-                sqs: new AWS.SQS()
-            });
-
-            app.start();
-        } catch (ex) {
-            console.log("EXCEPTION waiting for scripts to load", ex);
-            reject(ex);
-        }
-    });
 }
 //== End Helper Functions ==//
 
