@@ -7,11 +7,41 @@ var path = require('path');
 var { ObjectId } = require('mongodb');
 var passport = require('passport');
 var fs = require('fs');
-AWS.config.loadFromPath('./awsKeys.json');
+AWS.config.loadFromPath('./tempAWSKeys.json');
 var moment = require('moment');
 const config = require('../config');
 const formidableMiddleware = require('express-formidable');
 const { Consumer } = require('sqs-consumer');
+
+router.get('/testUserData', async function (request, response) {
+    try {
+        const tags = [
+            {
+                Key: "ExamCode",
+                Value: "EXAMCODE"
+            },
+            {
+                Key: "StudentId",
+                Value: "STUDENTID"
+            }
+        ];
+
+        const AMI = "ami-0d082638d3fa98a39";
+
+        // change this
+        const userdata = `<powershell>\nCopy-S3Object -BucketName temp.q-83.com -KeyPrefix "5ea38a8ccfcea0d9f7886247\\sbonpyer" -Folder C:\\Users\\Administrator\\Desktop -Region ap-southeast-2\n</powershell>`;
+        const createEC2 = await EC2.createEC2s(1, tags, AMI, userdata);
+        const instanceId = createEC2.Instances[0].InstanceId;
+
+        // Wait till running
+        const runningEC2 = (await EC2.waitFor("instanceRunning", instanceId)).Reservations[0].Instances[0];
+        console.log("Instance running...", instanceId);
+
+        return response.send(instanceId);
+    } catch (error) {
+        return response.status(500).json({ error });
+    }
+});
 
 // Lecturer creates exam; params: examName, file, application
 router.post('/create', [passport.authenticate('jwt', { session: false }), formidableMiddleware()], async function (request, response) {
