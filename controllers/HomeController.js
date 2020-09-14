@@ -1,7 +1,7 @@
 var router = (require('express')).Router();
 const passport = require('passport');
 const dbHelper = require('../services/database');
-// const { hashPassword } = require('../services/helperFunctions'); // Need to use this when sign up is enabled
+const { hashPassword } = require('../services/helperFunctions'); // Need to use this when sign up is enabled
 
 // Additional libraries
 var moment = require('moment');
@@ -35,7 +35,6 @@ router.get('/auth', passport.authenticate('jwt', { session: false }), function (
     }
 });
 
-/*
 router.post('/signup', async function (request, response) {
     try {
         // Validate that the user doesn't already exist
@@ -73,6 +72,5 @@ router.post('/signup', async function (request, response) {
         return response.status(500).json({ error });
     }
 });
-*/
 
 module.exports = router;
